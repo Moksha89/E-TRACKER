@@ -49,18 +49,22 @@ class OtpDeliveryResult:
     detail: str | None = None
 
 
-async def deliver_otp(
+def deliver_otp(
     phone: str, code: str, telegram_user_id: str | None = None
 ) -> OtpDeliveryResult:
     """Best-effort send the OTP via the configured Telegram channel.
 
     Returns the channel actually used. Falls back to dev-mode logging when no
     credentials are configured so the auth flow remains testable locally.
+
+    Synchronous on purpose so callers can run inside FastAPI's thread pool
+    alongside synchronous SQLAlchemy operations without blocking the event
+    loop.
     """
     if settings.telegram_gateway_token:
-        return await _send_via_gateway(phone, code)
+        return _send_via_gateway(phone, code)
     if settings.telegram_bot_token and telegram_user_id:
-        return await _send_via_bot(telegram_user_id, code)
+        return _send_via_bot(telegram_user_id, code)
     logger.warning("[DEV OTP] phone=%s code=%s", phone, code)
     return OtpDeliveryResult(
         channel=OtpChannel.TELEGRAM_GATEWAY,
@@ -70,16 +74,16 @@ async def deliver_otp(
     )
 
 
-async def _send_via_gateway(phone: str, code: str) -> OtpDeliveryResult:
+def _send_via_gateway(phone: str, code: str) -> OtpDeliveryResult:
     url = f"{settings.telegram_gateway_base}/sendVerificationMessage"
     headers = {
         "Authorization": f"Bearer {settings.telegram_gateway_token}",
         "Content-Type": "application/json",
     }
     payload = {"phone_number": phone, "code": code, "ttl": settings.otp_ttl_seconds}
-    async with httpx.AsyncClient(timeout=10) as client:
+    with httpx.Client(timeout=10) as client:
         try:
-            resp = await client.post(url, json=payload, headers=headers)
+            resp = client.post(url, json=payload, headers=headers)
         except httpx.HTTPError as exc:
             logger.error("telegram gateway error: %s", exc)
             return OtpDeliveryResult(
@@ -104,12 +108,12 @@ async def _send_via_gateway(phone: str, code: str) -> OtpDeliveryResult:
     )
 
 
-async def _send_via_bot(telegram_user_id: str, code: str) -> OtpDeliveryResult:
+def _send_via_bot(telegram_user_id: str, code: str) -> OtpDeliveryResult:
     url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-    text = f"Your CashBook verification code is: {code}\nIt expires in {settings.otp_ttl_seconds // 60} minutes."
-    async with httpx.AsyncClient(timeout=10) as client:
+    text = f"Your E-Tracker verification code is: {code}\nIt expires in {settings.otp_ttl_seconds // 60} minutes."
+    with httpx.Client(timeout=10) as client:
         try:
-            resp = await client.post(url, json={"chat_id": telegram_user_id, "text": text})
+            resp = client.post(url, json={"chat_id": telegram_user_id, "text": text})
         except httpx.HTTPError as exc:
             logger.error("telegram bot error: %s", exc)
             return OtpDeliveryResult(

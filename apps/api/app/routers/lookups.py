@@ -81,10 +81,8 @@ def update_category(
     cat = db.get(Category, category_id)
     if cat is None or cat.business_id != business.id or cat.deleted_at is not None:
         raise HTTPException(status_code=404, detail="category not found")
-    for f in ("name", "color", "icon", "sort_order"):
-        v = getattr(payload, f)
-        if v is not None:
-            setattr(cat, f, v)
+    for f, v in payload.model_dump(exclude_unset=True).items():
+        setattr(cat, f, v)
     db.commit()
     db.refresh(cat)
     return CategoryOut.model_validate(cat)
@@ -153,10 +151,8 @@ def update_payment_mode(
     pm = db.get(PaymentMode, pm_id)
     if pm is None or pm.business_id != business.id or pm.deleted_at is not None:
         raise HTTPException(status_code=404, detail="payment mode not found")
-    for f in ("name", "sort_order"):
-        v = getattr(payload, f)
-        if v is not None:
-            setattr(pm, f, v)
+    for f, v in payload.model_dump(exclude_unset=True).items():
+        setattr(pm, f, v)
     db.commit()
     db.refresh(pm)
     return PaymentModeOut.model_validate(pm)
@@ -228,10 +224,8 @@ def update_party(
     party = db.get(Party, party_id)
     if party is None or party.business_id != business.id or party.deleted_at is not None:
         raise HTTPException(status_code=404, detail="party not found")
-    for f in ("name", "phone", "note"):
-        v = getattr(payload, f)
-        if v is not None:
-            setattr(party, f, v)
+    for f, v in payload.model_dump(exclude_unset=True).items():
+        setattr(party, f, v)
     db.commit()
     db.refresh(party)
     return PartyOut.model_validate(party)

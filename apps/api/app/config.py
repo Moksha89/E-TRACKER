@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     otp_ttl_seconds: int = 300
     otp_resend_cooldown_seconds: int = 30
     otp_max_attempts: int = 5
+    otp_max_requests_per_hour: int = 5
 
     telegram_gateway_token: str | None = None
     telegram_gateway_base: str = "https://gatewayapi.telegram.org"

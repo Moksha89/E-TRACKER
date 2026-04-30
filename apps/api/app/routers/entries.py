@@ -168,18 +168,8 @@ def update_entry(
     if entry is None or entry.book_id != book_id or entry.deleted_at is not None:
         raise HTTPException(status_code=404, detail="entry not found")
     _validate_refs(db, business, payload)
-    for field in (
-        "type",
-        "amount_cents",
-        "occurred_at",
-        "description",
-        "party_id",
-        "category_id",
-        "payment_mode_id",
-    ):
-        value = getattr(payload, field)
-        if value is not None:
-            setattr(entry, field, value)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(entry, field, value)
     db.commit()
     db.refresh(entry)
     return EntryOut.model_validate(entry)

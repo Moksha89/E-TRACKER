@@ -34,10 +34,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="E-Tracker API", version="0.1.0", lifespan=lifespan)
 
+_origins = settings.cors_origin_list
+# Browsers reject credentialed requests when allow_origins is "*", so only
+# enable allow_credentials when an explicit allowlist is configured.
+_allow_credentials = _origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
+    allow_origins=_origins,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

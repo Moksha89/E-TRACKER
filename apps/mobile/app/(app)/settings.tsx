@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Appbar, Button, Card, Switch, Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTranslation } from 'react-i18next';
 
 import { extractErrorMessage } from '@/api/client';
-import { fetchBackup } from '@/api/endpoints';
+import { fetchBackup, restoreBackup } from '@/api/endpoints';
 import { Screen } from '@/components/Screen';
 import { useAppDispatch, useAppSelector } from '@/state/hooks';
-import { logout } from '@/state/auth';
+import { logout, setActiveBusiness } from '@/state/auth';
 import { setBiometricLock } from '@/state/settings';
 
 export default function SettingsScreen() {
@@ -57,6 +59,40 @@ export default function SettingsScreen() {
     }
   };
 
+  const onRestoreBackup = async () => {
+    setBusy(true);
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (picked.canceled || !picked.assets?.[0]) {
+        setBusy(false);
+        return;
+      }
+      const asset = picked.assets[0];
+      const raw = await FileSystem.readAsStringAsync(asset.uri);
+      let snapshot: Record<string, unknown>;
+      try {
+        snapshot = JSON.parse(raw);
+      } catch {
+        Alert.alert('Restore failed', 'Selected file is not valid JSON.');
+        setBusy(false);
+        return;
+      }
+      const created = await restoreBackup({ snapshot });
+      dispatch(setActiveBusiness(created.id));
+      Alert.alert(
+        'Restored',
+        `New business "${created.name}" created from backup. Switch to Books to view it.`,
+      );
+    } catch (e) {
+      Alert.alert('Error', extractErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
@@ -92,8 +128,21 @@ export default function SettingsScreen() {
                 disabled={busy || !businessId}
                 style={{ marginTop: 12 }}
               >
-                {t('settings.backup')}
+                Download backup (JSON)
               </Button>
+              <Button
+                mode="outlined"
+                icon="upload"
+                onPress={onRestoreBackup}
+                loading={busy}
+                disabled={busy}
+                style={{ marginTop: 8 }}
+              >
+                Restore from backup
+              </Button>
+              <Text variant="bodySmall" style={styles.muted}>
+                Restore creates a new business from a JSON snapshot. Existing data is not modified.
+              </Text>
             </Card.Content>
           </Card>
 

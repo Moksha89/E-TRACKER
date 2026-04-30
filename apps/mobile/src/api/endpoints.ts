@@ -335,6 +335,14 @@ export async function fetchBackup(businessId: string): Promise<Record<string, un
   return data;
 }
 
+export async function restoreBackup(input: {
+  snapshot: Record<string, unknown>;
+  name_override?: string | null;
+}): Promise<Business> {
+  const { data } = await getClient().post<Business>('/v1/restore', input);
+  return data;
+}
+
 // devices -----
 
 export interface Device {

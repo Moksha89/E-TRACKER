@@ -100,10 +100,8 @@ def update_business(
     business, membership = ctx
     if membership.role not in {MemberRole.OWNER, MemberRole.PARTNER}:
         raise HTTPException(status_code=403, detail="not allowed")
-    for field in ("name", "currency", "gst_number", "address"):
-        value = getattr(payload, field)
-        if value is not None:
-            setattr(business, field, value)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(business, field, value)
     db.commit()
     db.refresh(business)
     return _to_out(business, membership.role)

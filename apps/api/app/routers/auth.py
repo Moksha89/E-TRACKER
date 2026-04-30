@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -61,7 +61,7 @@ def _consume_otp(db: Session, phone: str, purpose: OtpPurpose, code: str) -> Tel
 
 
 @router.post("/otp/request", response_model=OtpRequestResponse)
-async def request_otp(
+def request_otp(
     payload: OtpRequest, db: Session = Depends(get_session)
 ) -> OtpRequestResponse:
     phone = _require_phone(payload.phone)
@@ -79,12 +79,24 @@ async def request_otp(
                 detail=f"please wait {int(settings.otp_resend_cooldown_seconds - delta)}s before requesting again",
             )
 
+    one_hour_ago = _now() - timedelta(hours=1)
+    recent_count = db.scalar(
+        select(func.count())
+        .select_from(TelegramOtp)
+        .where(TelegramOtp.phone == phone, TelegramOtp.sent_at >= one_hour_ago)
+    ) or 0
+    if recent_count >= settings.otp_max_requests_per_hour:
+        raise HTTPException(
+            status_code=429,
+            detail=f"too many OTP requests; try again later (max {settings.otp_max_requests_per_hour}/hour)",
+        )
+
     user = db.scalar(select(User).where(User.phone == phone))
     if payload.purpose in {OtpPurpose.LOGIN, OtpPurpose.RESET_PASSWORD} and user is None:
         raise HTTPException(status_code=404, detail="no account for this phone")
 
     code = generate_code()
-    delivery = await deliver_otp(
+    delivery = deliver_otp(
         phone, code, telegram_user_id=user.telegram_user_id if user else None
     )
     otp = TelegramOtp(

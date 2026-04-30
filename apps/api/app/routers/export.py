@@ -5,6 +5,7 @@ import io
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -203,14 +204,14 @@ def _pdf_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
     )
     styles = getSampleStyleSheet()
     story: list[object] = []
-    story.append(Paragraph(f"<b>{book.name}</b>", styles["Title"]))
+    story.append(Paragraph(f"<b>{xml_escape(book.name)}</b>", styles["Title"]))
     in_total = sum(i.amount_cents for i in items if i.type == EntryType.IN.value)
     out_total = sum(i.amount_cents for i in items if i.type == EntryType.OUT.value)
     net = book.opening_balance_cents + in_total - out_total
     summary_html = (
-        f"Cash In: <b>{_money(in_total, book.currency)}</b> &nbsp;&nbsp; "
-        f"Cash Out: <b>{_money(out_total, book.currency)}</b> &nbsp;&nbsp; "
-        f"Balance: <b>{_money(net, book.currency)}</b>"
+        f"Cash In: <b>{xml_escape(_money(in_total, book.currency))}</b> &nbsp;&nbsp; "
+        f"Cash Out: <b>{xml_escape(_money(out_total, book.currency))}</b> &nbsp;&nbsp; "
+        f"Balance: <b>{xml_escape(_money(net, book.currency))}</b>"
     )
     story.append(Paragraph(summary_html, styles["Normal"]))
     story.append(Spacer(1, 8))

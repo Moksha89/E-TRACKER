@@ -119,12 +119,15 @@ def update_book(
     if membership.role == MemberRole.VIEWER:
         raise HTTPException(status_code=403, detail="viewers cannot edit books")
     book = _book_for_user(db, business, book_id)
-    if payload.name is not None:
-        book.name = payload.name
-    if payload.opening_balance_cents is not None:
-        book.opening_balance_cents = payload.opening_balance_cents
-    if payload.archived is not None:
-        book.archived_at = datetime.now(UTC).replace(tzinfo=None) if payload.archived else None
+    fields = payload.model_dump(exclude_unset=True)
+    if "name" in fields:
+        book.name = fields["name"]
+    if "opening_balance_cents" in fields:
+        book.opening_balance_cents = fields["opening_balance_cents"]
+    if "archived" in fields:
+        book.archived_at = (
+            datetime.now(UTC).replace(tzinfo=None) if fields["archived"] else None
+        )
     db.commit()
     db.refresh(book)
     return BookOut.model_validate(book)
