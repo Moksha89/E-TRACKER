@@ -104,7 +104,7 @@ async def request_otp(
         delivered=delivery.delivered,
         cooldown_seconds=settings.otp_resend_cooldown_seconds,
         expires_in_seconds=settings.otp_ttl_seconds,
-        debug_code=None if delivery.delivered else code,
+        debug_code=(None if (delivery.delivered or settings.environment == "production") else code),
     )
 
 
