@@ -105,6 +105,7 @@ class User(Base, TimestampMixin):
 
 class Business(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "businesses"
+    __table_args__ = (Index("ix_business_owner_deleted", "owner_id", "deleted_at"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
@@ -125,7 +126,11 @@ class Business(Base, TimestampMixin, SoftDeleteMixin):
 
 class BusinessMember(Base, TimestampMixin):
     __tablename__ = "business_members"
-    __table_args__ = (UniqueConstraint("business_id", "user_id", name="uq_business_member"),)
+    __table_args__ = (
+        UniqueConstraint("business_id", "user_id", name="uq_business_member"),
+        Index("ix_business_member_user_status", "user_id", "status"),
+        Index("ix_business_member_business_status", "business_id", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(
@@ -146,6 +151,7 @@ class BusinessMember(Base, TimestampMixin):
 
 class Book(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "books"
+    __table_args__ = (Index("ix_book_business_deleted", "business_id", "deleted_at"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(
@@ -207,7 +213,12 @@ class Party(Base, TimestampMixin, SoftDeleteMixin):
 
 class Entry(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "entries"
-    __table_args__ = (Index("ix_entry_book_occurred", "book_id", "occurred_at"),)
+    __table_args__ = (
+        Index("ix_entry_book_occurred", "book_id", "occurred_at"),
+        Index("ix_entry_book_deleted_occurred", "book_id", "deleted_at", "occurred_at"),
+        Index("ix_entry_book_category", "book_id", "category_id"),
+        Index("ix_entry_book_payment_mode", "book_id", "payment_mode_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     book_id: Mapped[str] = mapped_column(String(36), ForeignKey("books.id"), nullable=False)

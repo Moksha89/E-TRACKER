@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
+from app import limits, observability
 from app.config import get_settings
 from app.db import Base, engine
 from app.realtime import set_main_loop
@@ -67,7 +68,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+observability.configure()
+
 app = FastAPI(title="E-Tracker API", version="0.1.0", lifespan=lifespan)
+limits.attach(app)
 
 _origins = settings.cors_origin_list
 # Browsers reject credentialed requests when allow_origins is "*", so only
