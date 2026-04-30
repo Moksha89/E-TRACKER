@@ -58,12 +58,32 @@ def _ensure_user_columns() -> None:
                 logger.exception("schema migration failed: %s", ddl)
 
 
+def _ensure_indexes() -> None:
+    """Create composite indexes added in Phase E on existing tables.
+
+    `Base.metadata.create_all` only creates indexes for *new* tables. For
+    long-running deploys we apply each `Index` defined in metadata with
+    `checkfirst=True` so it becomes a no-op when already present.
+    """
+    insp = inspect(engine)
+    if not insp.has_table("entries"):
+        return
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            for index in table.indexes:
+                try:
+                    index.create(bind=conn, checkfirst=True)
+                except Exception:
+                    logger.exception("index create failed: %s", index.name)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Auto-create tables on first boot when no Alembic history exists. In
     # production we use `alembic upgrade head` instead.
     Base.metadata.create_all(bind=engine)
     _ensure_user_columns()
+    _ensure_indexes()
     set_main_loop(asyncio.get_running_loop())
     yield
 
