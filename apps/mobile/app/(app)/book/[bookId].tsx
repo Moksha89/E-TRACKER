@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { FlatList, Share, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Share, StyleSheet, View } from 'react-native';
 import { Appbar, Badge, Card, Chip, FAB, Text, TouchableRipple } from 'react-native-paper';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,8 @@ import { useAppSelector } from '@/state/hooks';
 import { palette } from '@/theme';
 import { formatCents } from '@/utils/money';
 
+const PAGE_SIZE = 30;
+
 export default function BookDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ bookId: string }>();
@@ -31,8 +33,10 @@ export default function BookDetailScreen() {
   const [book, setBook] = useState<BookWithBalance | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<EntryFilter>({ limit: 100 });
+  const [filter, setFilter] = useState<EntryFilter>({});
   const [filterOpen, setFilterOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
@@ -44,16 +48,43 @@ export default function BookDetailScreen() {
     try {
       const [b, entryList] = await Promise.all([
         getBook(businessId, bookId),
-        listEntries(businessId, bookId, filter),
+        listEntries(businessId, bookId, { ...filter, limit: PAGE_SIZE, offset: 0 }),
       ]);
       setBook(b);
       setEntries(entryList.items);
+      setNextOffset(
+        entryList.next_cursor != null ? Number(entryList.next_cursor) : null,
+      );
     } catch (e) {
       setError(extractErrorMessage(e));
     } finally {
       setLoading(false);
     }
   }, [businessId, bookId, filter]);
+
+  const loadMore = useCallback(async () => {
+    if (!businessId || !bookId) return;
+    if (loadingMore || loading || nextOffset == null) return;
+    setLoadingMore(true);
+    try {
+      const page = await listEntries(businessId, bookId, {
+        ...filter,
+        limit: PAGE_SIZE,
+        offset: nextOffset,
+      });
+      setEntries((prev) => {
+        const seen = new Set(prev.map((e) => e.id));
+        const merged = [...prev];
+        for (const e of page.items) if (!seen.has(e.id)) merged.push(e);
+        return merged;
+      });
+      setNextOffset(page.next_cursor != null ? Number(page.next_cursor) : null);
+    } catch {
+      // best-effort; keep what we already have
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [businessId, bookId, filter, loading, loadingMore, nextOffset]);
 
   const loadLookups = useCallback(async () => {
     if (!businessId) return;
@@ -97,6 +128,33 @@ export default function BookDetailScreen() {
   const activeCount = countActiveFilters(filter);
 
   const currency = book?.currency ?? 'INR';
+
+  const onPressEntry = useCallback(
+    (id: string) =>
+      router.push({
+        pathname: '/(app)/book/[bookId]/entry/[entryId]',
+        params: { bookId: String(bookId), entryId: id },
+      }),
+    [bookId, router],
+  );
+
+  const renderEntry = useCallback(
+    ({ item }: { item: Entry }) => (
+      <EntryRow item={item} currency={currency} onPress={onPressEntry} />
+    ),
+    [currency, onPressEntry],
+  );
+
+  const keyExtractor = useCallback((e: Entry) => e.id, []);
+  const listFooter = useMemo(
+    () =>
+      loadingMore ? (
+        <View style={styles.footer}>
+          <ActivityIndicator />
+        </View>
+      ) : null,
+    [loadingMore],
+  );
 
   return (
     <>
@@ -184,10 +242,10 @@ export default function BookDetailScreen() {
 
         <FlatList
           data={entries}
-          keyExtractor={(e) => e.id}
+          keyExtractor={keyExtractor}
           refreshing={loading}
           onRefresh={load}
-          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 96 }}
+          contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             !loading ? (
               <Empty
@@ -197,43 +255,15 @@ export default function BookDetailScreen() {
               />
             ) : null
           }
-          renderItem={({ item }) => (
-            <Card mode="outlined" style={styles.entryCard}>
-              <TouchableRipple
-                onPress={() =>
-                  router.push({
-                    pathname: '/(app)/book/[bookId]/entry/[entryId]',
-                    params: { bookId: String(bookId), entryId: item.id },
-                  })
-                }
-              >
-                <Card.Content style={styles.row}>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      variant="titleMedium"
-                      style={{
-                        color: item.type === 'in' ? palette.cashIn : palette.cashOut,
-                        fontWeight: '700',
-                      }}
-                    >
-                      {item.type === 'in' ? '+' : '−'} {formatCents(item.amount_cents, currency)}
-                    </Text>
-                    <Text variant="bodySmall" style={styles.muted}>
-                      {new Date(item.occurred_at).toLocaleString()}
-                    </Text>
-                    {item.description ? (
-                      <Text variant="bodyMedium" style={{ marginTop: 4 }}>
-                        {item.description}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View style={styles.chevron}>
-                    <Text style={styles.muted}>›</Text>
-                  </View>
-                </Card.Content>
-              </TouchableRipple>
-            </Card>
-          )}
+          ListFooterComponent={listFooter}
+          renderItem={renderEntry}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          removeClippedSubviews
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={9}
+          updateCellsBatchingPeriod={50}
         />
 
         <FAB
@@ -263,8 +293,49 @@ export default function BookDetailScreen() {
   );
 }
 
+interface EntryRowProps {
+  item: Entry;
+  currency: string;
+  onPress: (id: string) => void;
+}
+
+const EntryRow = memo(function EntryRow({ item, currency, onPress }: EntryRowProps) {
+  return (
+    <Card mode="outlined" style={styles.entryCard}>
+      <TouchableRipple onPress={() => onPress(item.id)}>
+        <Card.Content style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text
+              variant="titleMedium"
+              style={{
+                color: item.type === 'in' ? palette.cashIn : palette.cashOut,
+                fontWeight: '700',
+              }}
+            >
+              {item.type === 'in' ? '+' : '−'} {formatCents(item.amount_cents, currency)}
+            </Text>
+            <Text variant="bodySmall" style={styles.muted}>
+              {new Date(item.occurred_at).toLocaleString()}
+            </Text>
+            {item.description ? (
+              <Text variant="bodyMedium" style={{ marginTop: 4 }} numberOfLines={1}>
+                {item.description}
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.chevron}>
+            <Text style={styles.muted}>›</Text>
+          </View>
+        </Card.Content>
+      </TouchableRipple>
+    </Card>
+  );
+});
+
 const styles = StyleSheet.create({
   header: { backgroundColor: palette.black },
+  listContent: { padding: 16, gap: 8, paddingBottom: 96 },
+  footer: { paddingVertical: 16, alignItems: 'center' },
   summary: { flexDirection: 'row', padding: 16, gap: 8 },
   pill: {
     flex: 1,

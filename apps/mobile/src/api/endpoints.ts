@@ -1,4 +1,4 @@
-import { getClient } from './client';
+import { dedupedGet, getClient } from './client';
 import type {
   AuthResponse,
   Book,
@@ -184,11 +184,10 @@ export async function listEntries(
   bookId: string,
   filter: EntryFilter = {},
 ): Promise<EntryListResponse> {
-  const { data } = await getClient().get<EntryListResponse>(
+  return dedupedGet<EntryListResponse>(
     `/v1/businesses/${businessId}/books/${bookId}/entries`,
-    { params: filter },
+    filter as Record<string, unknown>,
   );
-  return data;
 }
 
 export async function createEntry(
