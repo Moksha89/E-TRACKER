@@ -18,6 +18,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "phonenumbers>=8.13",
     "openpyxl>=3.1",
+    "reportlab>=4.2",
 ]
 
 [dependency-groups]

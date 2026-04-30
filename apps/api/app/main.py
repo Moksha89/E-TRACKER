@@ -6,7 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import Base, engine
-from app.routers import auth, books, businesses, entries, lookups, me
+from app.routers import (
+    auth,
+    books,
+    businesses,
+    entries,
+    export,
+    lookups,
+    me,
+    members,
+    reports,
+)
 
 settings = get_settings()
 
@@ -41,3 +51,6 @@ app.include_router(businesses.router)
 app.include_router(books.router)
 app.include_router(entries.router)
 app.include_router(lookups.router)
+app.include_router(members.router)
+app.include_router(reports.router)
+app.include_router(export.router)

@@ -238,6 +238,11 @@ class PartyOut(_ORM):
 class MemberInvite(BaseModel):
     phone: str
     role: MemberRole = MemberRole.STAFF
+    name: str | None = None
+
+
+class MemberUpdate(BaseModel):
+    role: MemberRole
 
 
 class MemberOut(_ORM):
@@ -248,6 +253,48 @@ class MemberOut(_ORM):
     status: str
     user_phone: str | None = None
     user_name: str | None = None
+    created_at: datetime
+
+
+# ---------- reports ----------
+
+
+class CategoryBreakdown(BaseModel):
+    category_id: str | None
+    category_name: str
+    in_total_cents: int
+    out_total_cents: int
+    entry_count: int
+
+
+class PaymentModeBreakdown(BaseModel):
+    payment_mode_id: str | None
+    payment_mode_name: str
+    in_total_cents: int
+    out_total_cents: int
+    entry_count: int
+
+
+class PartyBreakdown(BaseModel):
+    party_id: str | None
+    party_name: str
+    in_total_cents: int
+    out_total_cents: int
+    entry_count: int
+
+
+class ReportSummary(BaseModel):
+    business_id: str
+    book_id: str | None = None
+    from_date: datetime | None = None
+    to_date: datetime | None = None
+    in_total_cents: int
+    out_total_cents: int
+    net_cents: int
+    entry_count: int
+    by_category: list[CategoryBreakdown]
+    by_payment_mode: list[PaymentModeBreakdown]
+    by_party: list[PartyBreakdown]
 
 
 # ---------- shared ----------

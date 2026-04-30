@@ -47,6 +47,16 @@ export default function BooksScreen() {
       <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
         <Appbar.BackAction onPress={() => router.back()} color="#fff" />
         <Appbar.Content title="Cashbooks" color="#fff" />
+        <Appbar.Action
+          icon="account-multiple"
+          color="#fff"
+          onPress={() => router.push('/(app)/members')}
+        />
+        <Appbar.Action
+          icon="chart-bar"
+          color="#fff"
+          onPress={() => router.push('/(app)/reports')}
+        />
       </Appbar.Header>
       <Screen padded={false}>
         {error ? (

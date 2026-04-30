@@ -15,7 +15,8 @@ def _signup_and_login(client: TestClient, phone: str = "+919000000001") -> str:
         json={"phone": phone, "password": "secret123", "name": "Tester", "otp": code},
     )
     assert signup_resp.status_code == 200, signup_resp.text
-    return signup_resp.json()["access_token"]
+    token: str = signup_resp.json()["access_token"]
+    return token
 
 
 def test_full_flow(client: TestClient) -> None:
