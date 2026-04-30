@@ -1,13 +1,20 @@
 import { useCallback, useState } from 'react';
 import { FlatList, Share, StyleSheet, View } from 'react-native';
-import { Appbar, Card, FAB, Text, TouchableRipple } from 'react-native-paper';
+import { Appbar, Badge, Card, Chip, FAB, Text, TouchableRipple } from 'react-native-paper';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { extractErrorMessage } from '@/api/client';
-import { getBook, listEntries } from '@/api/endpoints';
-import type { BookWithBalance, Entry } from '@/api/types';
+import type { EntryFilter } from '@/api/endpoints';
+import {
+  getBook,
+  listCategories,
+  listEntries,
+  listPaymentModes,
+} from '@/api/endpoints';
+import type { BookWithBalance, Category, Entry, PaymentMode } from '@/api/types';
 import { Empty } from '@/components/Empty';
+import { EntryFiltersSheet, countActiveFilters } from '@/components/EntryFiltersSheet';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
 import { palette } from '@/theme';
@@ -23,6 +30,10 @@ export default function BookDetailScreen() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<EntryFilter>({ limit: 100 });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
 
   const load = useCallback(async () => {
     if (!businessId || !bookId) return;
@@ -31,7 +42,7 @@ export default function BookDetailScreen() {
     try {
       const [b, entryList] = await Promise.all([
         getBook(businessId, bookId),
-        listEntries(businessId, bookId, { limit: 100 }),
+        listEntries(businessId, bookId, filter),
       ]);
       setBook(b);
       setEntries(entryList.items);
@@ -40,13 +51,30 @@ export default function BookDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [businessId, bookId]);
+  }, [businessId, bookId, filter]);
+
+  const loadLookups = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const [cats, modes] = await Promise.all([
+        listCategories(businessId),
+        listPaymentModes(businessId),
+      ]);
+      setCategories(cats);
+      setPaymentModes(modes);
+    } catch {
+      // best-effort; filter sheet will show empty lists
+    }
+  }, [businessId]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load]),
+      loadLookups();
+    }, [load, loadLookups]),
   );
+
+  const activeCount = countActiveFilters(filter);
 
   const currency = book?.currency ?? 'INR';
 
@@ -55,6 +83,18 @@ export default function BookDetailScreen() {
       <Appbar.Header style={styles.header}>
         <Appbar.BackAction onPress={() => router.back()} color={palette.white} />
         <Appbar.Content title={book?.name ?? 'Book'} color={palette.white} />
+        <View>
+          <Appbar.Action
+            icon="filter-variant"
+            color={palette.white}
+            onPress={() => setFilterOpen(true)}
+          />
+          {activeCount > 0 ? (
+            <Badge style={styles.badge} size={16}>
+              {activeCount}
+            </Badge>
+          ) : null}
+        </View>
         {book ? (
           <>
             <Appbar.Action
@@ -85,6 +125,18 @@ export default function BookDetailScreen() {
         ) : null}
       </Appbar.Header>
       <Screen padded={false}>
+        {activeCount > 0 ? (
+          <View style={styles.activeRow}>
+            <Chip
+              compact
+              icon="filter-variant"
+              onClose={() => setFilter({ limit: filter.limit ?? 100 })}
+              style={styles.activeChip}
+            >
+              {activeCount} filter{activeCount === 1 ? '' : 's'} applied
+            </Chip>
+          </View>
+        ) : null}
         {book ? (
           <View style={styles.summary}>
             <View style={[styles.pill, styles.in]}>
@@ -176,6 +228,17 @@ export default function BookDetailScreen() {
           }
         />
       </Screen>
+      <EntryFiltersSheet
+        visible={filterOpen}
+        initial={filter}
+        categories={categories}
+        paymentModes={paymentModes}
+        onDismiss={() => setFilterOpen(false)}
+        onApply={(next) => {
+          setFilter(next);
+          setFilterOpen(false);
+        }}
+      />
     </>
   );
 }
@@ -197,6 +260,15 @@ const styles = StyleSheet.create({
   out: {},
   net: { backgroundColor: palette.black, borderColor: palette.black },
   netText: { color: palette.white },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: palette.cashOut,
+    color: palette.white,
+  },
+  activeRow: { paddingHorizontal: 16, paddingTop: 12 },
+  activeChip: { alignSelf: 'flex-start' },
   row: { flexDirection: 'row', alignItems: 'center' },
   entryCard: { backgroundColor: palette.surface },
   muted: { color: palette.textMuted },
