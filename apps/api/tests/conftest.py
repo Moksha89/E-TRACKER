@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app import db as app_db
 from app.db import Base, get_db
@@ -23,7 +23,7 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     original_engine = app_db.engine
     app_db.engine = engine
 
-    def _get_db() -> Iterator:
+    def _get_db() -> Iterator[Session]:
         db = testing_session()
         try:
             yield db

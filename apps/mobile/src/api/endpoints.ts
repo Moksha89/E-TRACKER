@@ -8,10 +8,15 @@ import type {
   Entry,
   EntryListResponse,
   EntryType,
+  ExportFormat,
+  Member,
+  MemberRole,
   OtpPurpose,
   OtpResponse,
   Party,
   PaymentMode,
+  PendingInvite,
+  ReportSummary,
   User,
 } from './types';
 
@@ -167,4 +172,105 @@ export async function listPaymentModes(businessId: string): Promise<PaymentMode[
 export async function listParties(businessId: string): Promise<Party[]> {
   const { data } = await getClient().get<Party[]>(`/v1/businesses/${businessId}/parties`);
   return data;
+}
+
+// members -----
+
+export async function listMembers(businessId: string): Promise<Member[]> {
+  const { data } = await getClient().get<Member[]>(`/v1/businesses/${businessId}/members`);
+  return data;
+}
+
+export async function inviteMember(
+  businessId: string,
+  input: { phone: string; role: MemberRole; name?: string },
+): Promise<Member> {
+  const { data } = await getClient().post<Member>(
+    `/v1/businesses/${businessId}/members`,
+    input,
+  );
+  return data;
+}
+
+export async function updateMember(
+  businessId: string,
+  memberId: string,
+  role: MemberRole,
+): Promise<Member> {
+  const { data } = await getClient().patch<Member>(
+    `/v1/businesses/${businessId}/members/${memberId}`,
+    { role },
+  );
+  return data;
+}
+
+export async function removeMember(businessId: string, memberId: string): Promise<void> {
+  await getClient().delete(`/v1/businesses/${businessId}/members/${memberId}`);
+}
+
+export async function acceptInvite(businessId: string): Promise<Member> {
+  const { data } = await getClient().post<Member>(
+    `/v1/businesses/${businessId}/members/accept`,
+  );
+  return data;
+}
+
+export async function listInvitations(): Promise<PendingInvite[]> {
+  const { data } = await getClient().get<PendingInvite[]>('/v1/me/invitations');
+  return data;
+}
+
+// reports -----
+
+export async function fetchBusinessReport(
+  businessId: string,
+  range: { from?: string; to?: string } = {},
+): Promise<ReportSummary> {
+  const { data } = await getClient().get<ReportSummary>(
+    `/v1/businesses/${businessId}/reports/summary`,
+    { params: range },
+  );
+  return data;
+}
+
+export async function fetchBookReport(
+  businessId: string,
+  bookId: string,
+  range: { from?: string; to?: string } = {},
+): Promise<ReportSummary> {
+  const { data } = await getClient().get<ReportSummary>(
+    `/v1/businesses/${businessId}/books/${bookId}/reports/summary`,
+    { params: range },
+  );
+  return data;
+}
+
+// export -----
+
+export function buildExportUrl(
+  businessId: string,
+  bookId: string,
+  fmt: ExportFormat,
+  range: { from?: string; to?: string } = {},
+): string {
+  const params = new URLSearchParams({ format: fmt });
+  if (range.from) params.set('from', range.from);
+  if (range.to) params.set('to', range.to);
+  return `/v1/businesses/${businessId}/books/${bookId}/entries/export?${params.toString()}`;
+}
+
+export async function downloadExport(
+  businessId: string,
+  bookId: string,
+  fmt: ExportFormat,
+  range: { from?: string; to?: string } = {},
+): Promise<{ blob: Blob; filename: string }> {
+  const url = buildExportUrl(businessId, bookId, fmt, range);
+  const resp = await getClient().get(url, { responseType: 'blob' });
+  const cd: string | undefined = resp.headers['content-disposition'];
+  const match = cd?.match(/filename="([^"]+)"/);
+  return {
+    blob: resp.data as Blob,
+    filename: match?.[1] ?? `entries.${fmt}`,
+  };
 }

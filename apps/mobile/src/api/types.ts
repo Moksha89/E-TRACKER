@@ -102,3 +102,63 @@ export interface Party {
   phone: string | null;
   note: string | null;
 }
+
+export type MemberStatus = 'invited' | 'active' | 'removed';
+
+export interface Member {
+  id: string;
+  business_id: string;
+  user_id: string;
+  role: MemberRole;
+  status: MemberStatus;
+  user_phone: string | null;
+  user_name: string | null;
+  created_at: string;
+}
+
+export interface PendingInvite {
+  business_id: string;
+  business_name: string;
+  role: MemberRole;
+  invited_by_id: string | null;
+}
+
+export interface CategoryBreakdown {
+  category_id: string | null;
+  category_name: string;
+  in_total_cents: number;
+  out_total_cents: number;
+  entry_count: number;
+}
+
+export interface PaymentModeBreakdown {
+  payment_mode_id: string | null;
+  payment_mode_name: string;
+  in_total_cents: number;
+  out_total_cents: number;
+  entry_count: number;
+}
+
+export interface PartyBreakdown {
+  party_id: string | null;
+  party_name: string;
+  in_total_cents: number;
+  out_total_cents: number;
+  entry_count: number;
+}
+
+export interface ReportSummary {
+  business_id: string;
+  book_id: string | null;
+  from_date: string | null;
+  to_date: string | null;
+  in_total_cents: number;
+  out_total_cents: number;
+  net_cents: number;
+  entry_count: number;
+  by_category: CategoryBreakdown[];
+  by_payment_mode: PaymentModeBreakdown[];
+  by_party: PartyBreakdown[];
+}
+
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
