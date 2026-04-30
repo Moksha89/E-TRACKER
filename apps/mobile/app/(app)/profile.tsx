@@ -7,13 +7,21 @@ import {
   Button,
   Card,
   HelperText,
+  Switch,
   Text,
   TextInput,
 } from 'react-native-paper';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { extractErrorMessage } from '@/api/client';
-import { changePassword, fetchMe, updateMe } from '@/api/endpoints';
+import {
+  changePassword,
+  fetchMe,
+  getTwoFactorStatus,
+  requestOtp,
+  setTwoFactor,
+  updateMe,
+} from '@/api/endpoints';
 import type { User } from '@/api/types';
 import { Screen } from '@/components/Screen';
 import { palette } from '@/theme';
@@ -30,16 +38,27 @@ export default function ProfileScreen() {
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
+  const [pwdOtp, setPwdOtp] = useState('');
   const [savingPwd, setSavingPwd] = useState(false);
   const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdNeedsOtp, setPwdNeedsOtp] = useState(false);
+  const [pwdOtpSending, setPwdOtpSending] = useState(false);
+
+  const [tfaEnabled, setTfaEnabled] = useState(false);
+  const [tfaOtp, setTfaOtp] = useState('');
+  const [tfaOtpSent, setTfaOtpSent] = useState(false);
+  const [tfaSending, setTfaSending] = useState(false);
+  const [tfaSaving, setTfaSaving] = useState(false);
+  const [tfaError, setTfaError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const user = await fetchMe();
+      const [user, status] = await Promise.all([fetchMe(), getTwoFactorStatus()]);
       setMe(user);
       setName(user.name ?? '');
       setEmail(user.email ?? '');
+      setTfaEnabled(status.enabled);
     } catch (e) {
       setProfileError(extractErrorMessage(e));
     } finally {
@@ -80,15 +99,75 @@ export default function ProfileScreen() {
     }
     setSavingPwd(true);
     try {
-      await changePassword({ current_password: currentPwd, new_password: newPwd });
+      await changePassword({
+        current_password: currentPwd,
+        new_password: newPwd,
+        otp: pwdNeedsOtp ? pwdOtp.trim() || undefined : undefined,
+      });
       setCurrentPwd('');
       setNewPwd('');
       setConfirmPwd('');
+      setPwdOtp('');
+      setPwdNeedsOtp(false);
       Alert.alert('Password updated');
+    } catch (e) {
+      const msg = extractErrorMessage(e);
+      if (msg === 'otp_required') {
+        setPwdNeedsOtp(true);
+        setPwdError('2FA is on for your account. Tap Send OTP and enter the code.');
+      } else {
+        setPwdError(msg);
+      }
+    } finally {
+      setSavingPwd(false);
+    }
+  };
+
+  const onSendPasswordOtp = async () => {
+    if (!me) return;
+    setPwdOtpSending(true);
+    try {
+      await requestOtp(me.phone, 'sensitive');
+      Alert.alert('OTP sent', 'Check Telegram for the 6-digit code.');
     } catch (e) {
       setPwdError(extractErrorMessage(e));
     } finally {
-      setSavingPwd(false);
+      setPwdOtpSending(false);
+    }
+  };
+
+  const onSendTfaOtp = async () => {
+    if (!me) return;
+    setTfaError(null);
+    setTfaSending(true);
+    try {
+      await requestOtp(me.phone, 'sensitive');
+      setTfaOtpSent(true);
+      Alert.alert('OTP sent', 'Check Telegram for the 6-digit code.');
+    } catch (e) {
+      setTfaError(extractErrorMessage(e));
+    } finally {
+      setTfaSending(false);
+    }
+  };
+
+  const onConfirmTfa = async (turnOn: boolean) => {
+    setTfaError(null);
+    if (!tfaOtp.trim()) {
+      setTfaError('Enter the OTP first.');
+      return;
+    }
+    setTfaSaving(true);
+    try {
+      const status = await setTwoFactor(turnOn, tfaOtp.trim());
+      setTfaEnabled(status.enabled);
+      setTfaOtp('');
+      setTfaOtpSent(false);
+      Alert.alert(status.enabled ? '2FA enabled' : '2FA disabled');
+    } catch (e) {
+      setTfaError(extractErrorMessage(e));
+    } finally {
+      setTfaSaving(false);
     }
   };
 
@@ -173,10 +252,91 @@ export default function ProfileScreen() {
               mode="outlined"
               style={styles.input}
             />
-            <HelperText type="error" visible={!!pwdError}>{pwdError ?? ' '}</HelperText>
+            {pwdNeedsOtp ? (
+              <View style={styles.otpRow}>
+                <TextInput
+                  label="Telegram OTP"
+                  value={pwdOtp}
+                  onChangeText={setPwdOtp}
+                  mode="outlined"
+                  keyboardType="number-pad"
+                  style={[styles.input, { flex: 1, marginRight: 8 }]}
+                />
+                <Button
+                  mode="outlined"
+                  onPress={onSendPasswordOtp}
+                  loading={pwdOtpSending}
+                  disabled={pwdOtpSending}
+                >
+                  Send OTP
+                </Button>
+              </View>
+            ) : null}
+            <HelperText type={pwdNeedsOtp ? 'info' : 'error'} visible={!!pwdError}>
+              {pwdError ?? ' '}
+            </HelperText>
             <Button mode="contained-tonal" onPress={onChangePassword} loading={savingPwd} disabled={savingPwd}>
               Update password
             </Button>
+          </Card.Content>
+        </Card>
+
+        <Card mode="outlined" style={styles.card}>
+          <Card.Title title="Telegram 2-factor authentication" />
+          <Card.Content>
+            <View style={styles.tfaRow}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text variant="bodyMedium">
+                  {tfaEnabled
+                    ? 'Sensitive actions (delete business, change password) require a Telegram OTP.'
+                    : 'Off — sensitive actions only require your password.'}
+                </Text>
+              </View>
+              <Switch
+                value={tfaEnabled || tfaOtpSent}
+                onValueChange={() => {
+                  if (!tfaOtpSent) {
+                    onSendTfaOtp();
+                  } else {
+                    setTfaOtp('');
+                    setTfaOtpSent(false);
+                  }
+                }}
+                disabled={tfaSending || tfaSaving}
+              />
+            </View>
+            {tfaOtpSent ? (
+              <View>
+                <TextInput
+                  label="Telegram OTP"
+                  value={tfaOtp}
+                  onChangeText={setTfaOtp}
+                  mode="outlined"
+                  keyboardType="number-pad"
+                  style={styles.input}
+                />
+                <View style={styles.tfaButtonsRow}>
+                  <Button
+                    mode="contained"
+                    onPress={() => onConfirmTfa(!tfaEnabled)}
+                    loading={tfaSaving}
+                    disabled={tfaSaving}
+                    style={{ flex: 1, marginRight: 8 }}
+                  >
+                    {tfaEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={onSendTfaOtp}
+                    loading={tfaSending}
+                    disabled={tfaSending}
+                  >
+                    Resend
+                  </Button>
+                </View>
+              </View>
+            ) : null}
+            <HelperText type="error" visible={!!tfaError}>{tfaError ?? ' '}</HelperText>
           </Card.Content>
         </Card>
       </Screen>
@@ -191,4 +351,7 @@ const styles = StyleSheet.create({
   card: { marginBottom: 12, backgroundColor: palette.surface },
   input: { marginBottom: 8 },
   muted: { color: palette.textMuted },
+  otpRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  tfaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  tfaButtonsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
 });

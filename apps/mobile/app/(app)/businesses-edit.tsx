@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
-import { Appbar, Button, HelperText, TextInput } from 'react-native-paper';
+import { Appbar, Button, Dialog, HelperText, Portal, Text, TextInput } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { extractErrorMessage } from '@/api/client';
-import { deleteBusiness, listBusinesses, updateBusiness } from '@/api/endpoints';
+import { deleteBusiness, fetchMe, listBusinesses, requestOtp, updateBusiness } from '@/api/endpoints';
 import { Screen } from '@/components/Screen';
 import { setActiveBusiness } from '@/state/auth';
 import { useAppDispatch } from '@/state/hooks';
@@ -22,6 +22,10 @@ export default function EditBusinessScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [otpDialog, setOtpDialog] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!businessId) return;
@@ -76,12 +80,46 @@ export default function EditBusinessScreen() {
               dispatch(setActiveBusiness(null));
               router.replace('/(app)/businesses');
             } catch (e) {
-              Alert.alert('Error', extractErrorMessage(e));
+              const msg = extractErrorMessage(e);
+              if (msg !== 'otp_required') {
+                Alert.alert('Error', msg);
+                return;
+              }
+              try {
+                const me = await fetchMe();
+                await requestOtp(me.phone, 'sensitive');
+              } catch (sendErr) {
+                Alert.alert('Error', extractErrorMessage(sendErr));
+                return;
+              }
+              setOtpCode('');
+              setOtpError(null);
+              setOtpDialog(true);
             }
           },
         },
       ],
     );
+  };
+
+  const onConfirmOtpDelete = async () => {
+    if (!businessId) return;
+    if (!otpCode.trim()) {
+      setOtpError('Enter the OTP');
+      return;
+    }
+    setOtpBusy(true);
+    setOtpError(null);
+    try {
+      await deleteBusiness(businessId, otpCode.trim());
+      setOtpDialog(false);
+      dispatch(setActiveBusiness(null));
+      router.replace('/(app)/businesses');
+    } catch (err) {
+      setOtpError(extractErrorMessage(err));
+    } finally {
+      setOtpBusy(false);
+    }
   };
 
   return (
@@ -138,6 +176,30 @@ export default function EditBusinessScreen() {
           Delete business
         </Button>
       </Screen>
+      <Portal>
+        <Dialog visible={otpDialog} onDismiss={() => setOtpDialog(false)}>
+          <Dialog.Title>Confirm with Telegram OTP</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium" style={{ marginBottom: 12 }}>
+              2FA is enabled. Enter the 6-digit code we just sent to your Telegram.
+            </Text>
+            <TextInput
+              label="OTP"
+              value={otpCode}
+              onChangeText={setOtpCode}
+              mode="outlined"
+              keyboardType="number-pad"
+            />
+            <HelperText type="error" visible={!!otpError}>{otpError ?? ' '}</HelperText>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setOtpDialog(false)}>Cancel</Button>
+            <Button onPress={onConfirmOtpDelete} loading={otpBusy} disabled={otpBusy}>
+              Delete
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </>
   );
 }

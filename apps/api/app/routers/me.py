@@ -4,8 +4,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.deps import get_current_user, get_session
-from app.models import Business, BusinessMember, MemberRole, MemberStatus, User
-from app.schemas import PasswordChangeRequest, UserOut, UserUpdate
+from app.models import Business, BusinessMember, MemberRole, MemberStatus, OtpPurpose, User
+from app.routers.auth import consume_otp
+from app.schemas import (
+    PasswordChangeRequest,
+    TwoFactorStatus,
+    TwoFactorToggleRequest,
+    UserOut,
+    UserUpdate,
+)
 from app.security import hash_password, verify_password
 
 router = APIRouter(prefix="/v1/me", tags=["me"])
@@ -56,8 +63,32 @@ def change_password(
 ) -> None:
     if not user.password_hash or not verify_password(payload.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="current password is incorrect")
+    if user.two_factor_enabled:
+        if not payload.otp:
+            raise HTTPException(status_code=401, detail="otp_required")
+        consume_otp(db, user.phone, OtpPurpose.SENSITIVE, payload.otp)
     user.password_hash = hash_password(payload.new_password)
     db.commit()
+
+
+@router.get("/2fa", response_model=TwoFactorStatus)
+def get_two_factor_status(user: User = Depends(get_current_user)) -> TwoFactorStatus:
+    return TwoFactorStatus(enabled=user.two_factor_enabled)
+
+
+@router.post("/2fa", response_model=TwoFactorStatus)
+def toggle_two_factor(
+    payload: TwoFactorToggleRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> TwoFactorStatus:
+    """Enable or disable Telegram-based 2FA. Both directions require a fresh
+    SENSITIVE OTP delivered to the caller's verified phone, so an attacker
+    holding only the password cannot toggle it off."""
+    consume_otp(db, user.phone, OtpPurpose.SENSITIVE, payload.otp)
+    user.two_factor_enabled = bool(payload.enabled)
+    db.commit()
+    return TwoFactorStatus(enabled=user.two_factor_enabled)
 
 
 @router.get("/invitations", response_model=list[PendingInvite])

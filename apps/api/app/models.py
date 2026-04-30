@@ -94,6 +94,7 @@ class User(Base, TimestampMixin):
         nullable=True,
     )
     telegram_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     memberships: Mapped[list[BusinessMember]] = relationship(
         back_populates="user",
