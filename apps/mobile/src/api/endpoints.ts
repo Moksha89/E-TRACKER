@@ -72,8 +72,22 @@ export async function updateMe(input: {
 export async function changePassword(input: {
   current_password: string;
   new_password: string;
+  otp?: string;
 }): Promise<void> {
   await getClient().post('/v1/me/password', input);
+}
+
+export async function getTwoFactorStatus(): Promise<{ enabled: boolean }> {
+  const { data } = await getClient().get<{ enabled: boolean }>('/v1/me/2fa');
+  return data;
+}
+
+export async function setTwoFactor(enabled: boolean, otp: string): Promise<{ enabled: boolean }> {
+  const { data } = await getClient().post<{ enabled: boolean }>('/v1/me/2fa', {
+    enabled,
+    otp,
+  });
+  return data;
 }
 
 // businesses -----
@@ -106,8 +120,9 @@ export async function updateBusiness(
   return data;
 }
 
-export async function deleteBusiness(businessId: string): Promise<void> {
-  await getClient().delete(`/v1/businesses/${businessId}`);
+export async function deleteBusiness(businessId: string, otp?: string): Promise<void> {
+  const qs = otp ? `?otp=${encodeURIComponent(otp)}` : '';
+  await getClient().delete(`/v1/businesses/${businessId}${qs}`);
 }
 
 // books -----

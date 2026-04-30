@@ -11,6 +11,7 @@ export interface User {
   email: string | null;
   phone_verified: boolean;
   default_business_id: string | null;
+  two_factor_enabled?: boolean;
 }
 
 export interface AuthResponse {

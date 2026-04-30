@@ -60,6 +60,7 @@ class UserOut(_ORM):
     email: str | None
     phone_verified: bool
     default_business_id: str | None
+    two_factor_enabled: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -71,6 +72,16 @@ class UserUpdate(BaseModel):
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=6, max_length=128)
+    otp: str | None = None  # required when two_factor_enabled is True
+
+
+class TwoFactorStatus(BaseModel):
+    enabled: bool
+
+
+class TwoFactorToggleRequest(BaseModel):
+    enabled: bool
+    otp: str = Field(min_length=4, max_length=8)
 
 
 # ---------- business ----------

@@ -60,6 +60,12 @@ def _consume_otp(db: Session, phone: str, purpose: OtpPurpose, code: str) -> Tel
     return otp
 
 
+# Public alias so other routers can require a fresh SENSITIVE OTP for the
+# caller's phone (used by 2FA and password change).
+def consume_otp(db: Session, phone: str, purpose: OtpPurpose, code: str) -> TelegramOtp:
+    return _consume_otp(db, phone, purpose, code)
+
+
 @router.post("/otp/request", response_model=OtpRequestResponse)
 def request_otp(payload: OtpRequest, db: Session = Depends(get_session)) -> OtpRequestResponse:
     phone = _require_phone(payload.phone)

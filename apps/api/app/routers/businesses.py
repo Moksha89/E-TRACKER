@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,9 +11,11 @@ from app.models import (
     Category,
     MemberRole,
     MemberStatus,
+    OtpPurpose,
     PaymentMode,
     User,
 )
+from app.routers.auth import consume_otp
 from app.schemas import BusinessCreate, BusinessOut, BusinessUpdate
 
 router = APIRouter(prefix="/v1/businesses", tags=["businesses"])
@@ -112,11 +114,17 @@ def update_business(
 @router.delete("/{business_id}", status_code=204)
 def delete_business(
     business_id: str,
+    otp: str | None = Query(default=None),
     db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
     ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
 ) -> None:
     business, membership = ctx
     if membership.role != MemberRole.OWNER:
         raise HTTPException(status_code=403, detail="only the owner can delete this business")
+    if user.two_factor_enabled:
+        if not otp:
+            raise HTTPException(status_code=401, detail="otp_required")
+        consume_otp(db, user.phone, OtpPurpose.SENSITIVE, otp)
     business.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     db.commit()
