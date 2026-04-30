@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "E-Tracker",
+    "slug": "etracker",
+    "version": "0.1.0",
+    "scheme": "etracker",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.etracker.app"
+    },
+    "android": {
+      "package": "in.etracker.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiBaseUrl": "http://173.208.132.8"
+    }
+  }
+}
