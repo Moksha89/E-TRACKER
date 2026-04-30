@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Share, StyleSheet, View } from 'react-native';
 import { Appbar, Card, FAB, IconButton, Text } from 'react-native-paper';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { extractErrorMessage } from '@/api/client';
 import { deleteEntry, getBook, listEntries } from '@/api/endpoints';
@@ -16,6 +17,7 @@ export default function BookDetailScreen() {
   const params = useLocalSearchParams<{ bookId: string }>();
   const bookId = params.bookId;
   const businessId = useAppSelector((s) => s.auth.activeBusinessId);
+  const { t } = useTranslation();
   const [book, setBook] = useState<BookWithBalance | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,6 +64,22 @@ export default function BookDetailScreen() {
       <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
         <Appbar.BackAction onPress={() => router.back()} color="#fff" />
         <Appbar.Content title={book?.name ?? 'Book'} color="#fff" />
+        {book ? (
+          <Appbar.Action
+            icon="share-variant"
+            color="#fff"
+            onPress={() =>
+              Share.share({
+                message: t('books.share_summary', {
+                  name: book.name,
+                  in: formatCents(book.in_total_cents, currency),
+                  out: formatCents(book.out_total_cents, currency),
+                  net: formatCents(book.net_balance_cents, currency),
+                }),
+              })
+            }
+          />
+        ) : null}
       </Appbar.Header>
       <Screen padded={false}>
         {book ? (

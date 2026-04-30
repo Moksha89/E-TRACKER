@@ -297,6 +297,36 @@ class ReportSummary(BaseModel):
     by_party: list[PartyBreakdown]
 
 
+# ---------- attachments ----------
+
+
+class AttachmentOut(_ORM):
+    id: str
+    entry_id: str
+    file_url: str
+    original_filename: str | None
+    mime_type: str | None
+    size_bytes: int | None
+    created_at: datetime
+
+
+# ---------- devices / push ----------
+
+
+class DeviceRegister(BaseModel):
+    expo_push_token: str = Field(min_length=4, max_length=255)
+    platform: str | None = None
+    locale: str | None = None
+
+
+class DeviceOut(_ORM):
+    id: str
+    expo_push_token: str
+    platform: str | None
+    locale: str | None
+    last_seen_at: datetime
+
+
 # ---------- shared ----------
 
 

@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { Image, StyleSheet, View } from 'react-native';
+import { Button, Chip, HelperText, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 
 import { extractErrorMessage } from '@/api/client';
-import { createEntry, listCategories, listPaymentModes } from '@/api/endpoints';
+import {
+  createEntry,
+  listCategories,
+  listPaymentModes,
+  uploadAttachment,
+} from '@/api/endpoints';
 import type { Category, EntryType, PaymentMode } from '@/api/types';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
@@ -23,8 +29,24 @@ export default function NewEntryScreen() {
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [paymentModeId, setPaymentModeId] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const pickAttachment = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError('Photo library permission is required to attach a receipt.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAttachment(result.assets[0]);
+    }
+  };
 
   useEffect(() => {
     if (!businessId) return;
@@ -49,7 +71,7 @@ export default function NewEntryScreen() {
     }
     setBusy(true);
     try {
-      await createEntry(businessId, String(bookId), {
+      const created = await createEntry(businessId, String(bookId), {
         type,
         amount_cents: cents,
         occurred_at: new Date().toISOString(),
@@ -57,6 +79,14 @@ export default function NewEntryScreen() {
         category_id: categoryId ?? undefined,
         payment_mode_id: paymentModeId ?? undefined,
       });
+      if (attachment) {
+        const filename = attachment.fileName ?? `receipt-${Date.now()}.jpg`;
+        await uploadAttachment(businessId, String(bookId), created.id, {
+          uri: attachment.uri,
+          name: filename,
+          type: attachment.mimeType ?? 'image/jpeg',
+        });
+      }
       router.back();
     } catch (e) {
       setError(extractErrorMessage(e));
@@ -131,6 +161,28 @@ export default function NewEntryScreen() {
         ))}
       </View>
 
+      <Text variant="labelLarge" style={styles.section}>
+        Attachment
+      </Text>
+      <View style={styles.attachmentRow}>
+        <Button mode="outlined" icon="paperclip" onPress={pickAttachment}>
+          {attachment ? 'Replace' : 'Attach receipt'}
+        </Button>
+        {attachment ? (
+          <>
+            <Image source={{ uri: attachment.uri }} style={styles.thumb} />
+            <Chip
+              compact
+              icon="close"
+              onPress={() => setAttachment(null)}
+              style={styles.removeChip}
+            >
+              Remove
+            </Chip>
+          </>
+        ) : null}
+      </View>
+
       <HelperText type="error" visible={!!error}>
         {error ?? ' '}
       </HelperText>
@@ -155,4 +207,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   inBtn: { backgroundColor: '#DCFCE7' },
   outBtn: { backgroundColor: '#FEE2E2' },
+  attachmentRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  thumb: { width: 64, height: 64, borderRadius: 6 },
+  removeChip: { alignSelf: 'center' },
 });

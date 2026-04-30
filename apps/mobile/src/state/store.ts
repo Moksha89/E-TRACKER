@@ -12,16 +12,18 @@ import {
 } from 'redux-persist';
 
 import authReducer from './auth';
+import settingsReducer from './settings';
 
 const rootReducer = combineReducers({
   auth: authReducer,
+  settings: settingsReducer,
 });
 
 const persistedReducer = persistReducer(
   {
     key: 'cashbook-root',
     storage: AsyncStorage,
-    whitelist: ['auth'],
+    whitelist: ['auth', 'settings'],
   },
   rootReducer,
 );

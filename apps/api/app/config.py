@@ -26,6 +26,9 @@ class Settings(BaseSettings):
 
     cors_origins: str = "*"
 
+    attachments_dir: str = Field(default="./var/attachments")
+    max_attachment_mb: int = 20
+
     @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":

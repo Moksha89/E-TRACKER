@@ -7,7 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import db as app_db
+from app.config import get_settings
 from app.db import Base, get_db
+from app.deps import get_session
 from app.main import app
 
 
@@ -23,6 +25,10 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     original_engine = app_db.engine
     app_db.engine = engine
 
+    settings = get_settings()
+    original_attachments_dir = settings.attachments_dir
+    settings.attachments_dir = str(tmp_path / "attachments")
+
     def _get_db() -> Iterator[Session]:
         db = testing_session()
         try:
@@ -31,8 +37,15 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
             db.close()
 
     app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[get_session] = _get_db
+    # Also retarget the module-level SessionLocal so any code that imports it
+    # directly (rather than via DI) uses the test database.
+    original_session_local = app_db.SessionLocal
+    app_db.SessionLocal = testing_session
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
     app_db.engine = original_engine
+    app_db.SessionLocal = original_session_local
+    settings.attachments_dir = original_attachments_dir

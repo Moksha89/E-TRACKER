@@ -1,0 +1,94 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "share": "Share",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "logout": "Log out"
+  },
+  "auth": {
+    "phone": "Phone number",
+    "password": "Password",
+    "name": "Your name",
+    "otp": "OTP",
+    "sign_in": "Sign in",
+    "sign_up": "Sign up",
+    "forgot_password": "Forgot password?",
+    "send_otp": "Send OTP",
+    "verify_otp": "Verify OTP",
+    "or": "or"
+  },
+  "businesses": {
+    "title": "Businesses",
+    "new": "New business",
+    "empty_title": "No businesses yet",
+    "empty_subtitle": "Create your first business to get started."
+  },
+  "books": {
+    "title": "Cashbooks",
+    "new": "New book",
+    "cash_in": "Cash In",
+    "cash_out": "Cash Out",
+    "balance": "Balance",
+    "empty_title": "No books yet",
+    "empty_subtitle": "Tap + to add your first cashbook.",
+    "share_summary": "{{name}}\nCash In: {{in}}\nCash Out: {{out}}\nBalance: {{net}}"
+  },
+  "entries": {
+    "new": "New entry",
+    "amount": "Amount",
+    "description": "Description",
+    "category": "Category",
+    "payment_mode": "Payment mode",
+    "type_in": "Cash In",
+    "type_out": "Cash Out",
+    "attach": "Attach receipt",
+    "attachments": "Attachments",
+    "remove_attachment": "Remove",
+    "save": "Save entry"
+  },
+  "members": {
+    "title": "Members",
+    "invite": "Invite member",
+    "change_role": "Change role",
+    "remove": "Remove",
+    "empty_title": "Just you so far",
+    "empty_subtitle": "Invite partners or staff to share this business.",
+    "phone_required": "Phone required",
+    "phone_required_msg": "Enter the phone number to invite.",
+    "send_invite": "Send invite",
+    "role_partner": "Partner",
+    "role_staff": "Staff",
+    "role_viewer": "Viewer",
+    "role_hint": "Partner: full access. Staff: can add/edit entries. Viewer: read-only."
+  },
+  "reports": {
+    "title": "Reports",
+    "scope_business": "Business",
+    "scope_book": "Book",
+    "range_month": "Month",
+    "range_30d": "30d",
+    "range_year": "Year",
+    "range_all": "All",
+    "summary": "Summary",
+    "by_category": "By category",
+    "by_payment_mode": "By payment mode",
+    "by_party": "By party",
+    "export": "Export",
+    "export_hint_book": "Download entries from the selected book.",
+    "export_hint_business": "Pick a book to export entries.",
+    "no_data": "No data"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "biometric_lock": "Lock app with biometrics",
+    "biometric_unavailable": "Biometric hardware not available on this device.",
+    "backup": "Download backup (JSON)",
+    "english": "English",
+    "hindi": "हिंदी"
+  }
+}

@@ -237,10 +237,28 @@ class EntryAttachment(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     entry_id: Mapped[str] = mapped_column(String(36), ForeignKey("entries.id"), nullable=False)
     file_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    uploaded_by_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
+    )
 
     entry: Mapped[Entry] = relationship(back_populates="attachments")
+
+
+class UserDevice(Base, TimestampMixin):
+    __tablename__ = "user_devices"
+    __table_args__ = (UniqueConstraint("expo_push_token", name="uq_user_device_token"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    expo_push_token: Mapped[str] = mapped_column(String(255), nullable=False)
+    platform: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
 
 
 class TelegramOtp(Base):

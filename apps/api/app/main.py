@@ -7,9 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import Base, engine
 from app.routers import (
+    attachments,
     auth,
+    backup,
     books,
     businesses,
+    devices,
     entries,
     export,
     lookups,
@@ -54,3 +57,7 @@ app.include_router(lookups.router)
 app.include_router(members.router)
 app.include_router(reports.router)
 app.include_router(export.router)
+app.include_router(attachments.router)
+app.include_router(attachments.download_router)
+app.include_router(backup.router)
+app.include_router(devices.router)

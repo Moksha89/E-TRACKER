@@ -274,3 +274,82 @@ export async function downloadExport(
     filename: match?.[1] ?? `entries.${fmt}`,
   };
 }
+
+// attachments -----
+
+export interface Attachment {
+  id: string;
+  entry_id: string;
+  file_url: string;
+  original_filename: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  created_at: string;
+}
+
+export async function listAttachments(
+  businessId: string,
+  bookId: string,
+  entryId: string,
+): Promise<Attachment[]> {
+  const { data } = await getClient().get<Attachment[]>(
+    `/v1/businesses/${businessId}/books/${bookId}/entries/${entryId}/attachments`,
+  );
+  return data;
+}
+
+export async function uploadAttachment(
+  businessId: string,
+  bookId: string,
+  entryId: string,
+  file: { uri: string; name: string; type: string },
+): Promise<Attachment> {
+  const form = new FormData();
+  // React Native FormData accepts {uri,name,type} blobs
+  form.append('file', file as unknown as Blob);
+  const { data } = await getClient().post<Attachment>(
+    `/v1/businesses/${businessId}/books/${bookId}/entries/${entryId}/attachments`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data;
+}
+
+export async function deleteAttachment(
+  businessId: string,
+  bookId: string,
+  entryId: string,
+  attachmentId: string,
+): Promise<void> {
+  await getClient().delete(
+    `/v1/businesses/${businessId}/books/${bookId}/entries/${entryId}/attachments/${attachmentId}`,
+  );
+}
+
+// backup -----
+
+export async function fetchBackup(businessId: string): Promise<Record<string, unknown>> {
+  const { data } = await getClient().get<Record<string, unknown>>(
+    `/v1/businesses/${businessId}/backup`,
+  );
+  return data;
+}
+
+// devices -----
+
+export interface Device {
+  id: string;
+  expo_push_token: string;
+  platform: string | null;
+  locale: string | null;
+  last_seen_at: string;
+}
+
+export async function registerDevice(input: {
+  expo_push_token: string;
+  platform?: string;
+  locale?: string;
+}): Promise<Device> {
+  const { data } = await getClient().post<Device>('/v1/me/devices', input);
+  return data;
+}

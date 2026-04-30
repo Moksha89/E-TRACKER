@@ -57,6 +57,11 @@ export default function BooksScreen() {
           color="#fff"
           onPress={() => router.push('/(app)/reports')}
         />
+        <Appbar.Action
+          icon="cog"
+          color="#fff"
+          onPress={() => router.push('/(app)/settings')}
+        />
       </Appbar.Header>
       <Screen padded={false}>
         {error ? (
