@@ -1,6 +1,6 @@
-# cashbook-api
+# etracker-api
 
-FastAPI backend for the Cashbook clone.
+FastAPI backend for E-Tracker.
 
 ## Requirements
 

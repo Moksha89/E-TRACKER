@@ -155,6 +155,7 @@ def invite_member(
 def update_member(
     member_id: str,
     payload: MemberUpdate,
+    background: BackgroundTasks,
     db: Session = Depends(get_session),
     ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
 ) -> MemberOut:
@@ -170,15 +171,31 @@ def update_member(
     if member.role == MemberRole.OWNER:
         raise HTTPException(status_code=400, detail="cannot demote the owner")
 
+    old_role = member.role
     member.role = payload.role
     db.commit()
     db.refresh(member)
+    if old_role != payload.role:
+        background.add_task(
+            notify_user,
+            db,
+            member.user_id,
+            title=f"Role updated in {business.name}",
+            body=f"You're now a {payload.role.value}.",
+            data={
+                "type": "member_role_changed",
+                "business_id": business.id,
+                "member_id": member.id,
+                "role": payload.role.value,
+            },
+        )
     return _to_out(member)
 
 
 @router.delete("/{member_id}", response_model=Message)
 def remove_member(
     member_id: str,
+    background: BackgroundTasks,
     db: Session = Depends(get_session),
     ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
 ) -> Message:
@@ -196,8 +213,21 @@ def remove_member(
     if membership.role == MemberRole.PARTNER and member.role == MemberRole.PARTNER:
         raise HTTPException(status_code=403, detail="partners cannot remove other partners")
 
+    removed_user_id = member.user_id
     member.status = MemberStatus.REMOVED
     db.commit()
+    background.add_task(
+        notify_user,
+        db,
+        removed_user_id,
+        title=f"Removed from {business.name}",
+        body="Your access to this business has been revoked.",
+        data={
+            "type": "member_removed",
+            "business_id": business.id,
+            "member_id": member.id,
+        },
+    )
     return Message(detail="member removed")
 
 

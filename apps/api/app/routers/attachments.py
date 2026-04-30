@@ -5,7 +5,7 @@ import os
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from app.models import (
     MemberRole,
     User,
 )
+from app.push import notify_business_members
 from app.schemas import AttachmentOut, Message
 
 router = APIRouter(
@@ -67,6 +68,7 @@ def list_attachments(
 def upload_attachment(
     book_id: str,
     entry_id: str,
+    background: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
@@ -110,6 +112,22 @@ def upload_attachment(
     db.add(attachment)
     db.commit()
     db.refresh(attachment)
+    actor_label = user.name or user.phone
+    background.add_task(
+        notify_business_members,
+        db,
+        business.id,
+        title="New attachment",
+        body=f"{actor_label} attached {file.filename or 'a file'} to an entry.",
+        exclude_user_id=user.id,
+        data={
+            "type": "attachment_uploaded",
+            "attachment_id": attachment.id,
+            "entry_id": entry.id,
+            "book_id": book_id,
+            "business_id": business.id,
+        },
+    )
     return AttachmentOut.model_validate(attachment)
 
 
