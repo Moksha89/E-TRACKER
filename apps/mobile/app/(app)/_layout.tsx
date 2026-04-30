@@ -11,7 +11,6 @@ export default function AppLayout() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const token = useAppSelector((s) => s.auth.accessToken);
-  const locale = useAppSelector((s) => s.settings.locale);
   const sentToken = useAppSelector((s) => s.settings.pushTokenSent);
 
   useEffect(() => {
@@ -36,7 +35,7 @@ export default function AppLayout() {
           await registerDevice({
             expo_push_token: t.data,
             platform: Platform.OS,
-            locale,
+            locale: 'en',
           });
           dispatch(setPushTokenSent(t.data));
         }
@@ -44,7 +43,7 @@ export default function AppLayout() {
         // best-effort; don't block app on push registration
       }
     })();
-  }, [token, locale, sentToken, dispatch]);
+  }, [token, sentToken, dispatch]);
 
   return (
     <Stack

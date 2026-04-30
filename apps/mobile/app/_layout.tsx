@@ -9,7 +9,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 import { configureClient } from '@/api/client';
-import i18n, { setAppLocale, type SupportedLocale } from '@/i18n';
+import '@/i18n';
 import type { RootState } from '@/state/store';
 import { persistor, store } from '@/state/store';
 
@@ -21,16 +21,6 @@ const theme = {
     secondary: '#0EA5E9',
   },
 };
-
-function I18nBridge({ children }: { children: React.ReactNode }) {
-  const locale = useSelector<RootState, SupportedLocale>((s) => s.settings.locale);
-  useEffect(() => {
-    if (i18n.language !== locale) {
-      void setAppLocale(locale);
-    }
-  }, [locale]);
-  return <>{children}</>;
-}
 
 function BiometricGate({ children }: { children: React.ReactNode }) {
   const enabled = useSelector<RootState, boolean>((s) => s.settings.biometricLock);
@@ -88,13 +78,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
         <PersistGate loading={null} persistor={persistor}>
-          <I18nBridge>
-            <BiometricGate>
-              <PaperProvider theme={theme}>
-                <Stack screenOptions={{ headerShown: false }} />
-              </PaperProvider>
-            </BiometricGate>
-          </I18nBridge>
+          <BiometricGate>
+            <PaperProvider theme={theme}>
+              <Stack screenOptions={{ headerShown: false }} />
+            </PaperProvider>
+          </BiometricGate>
         </PersistGate>
       </ReduxProvider>
     </GestureHandlerRootView>

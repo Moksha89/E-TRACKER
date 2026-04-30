@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.deps import get_current_user, get_session, require_business_access
 from app.models import Business, BusinessMember, MemberRole, MemberStatus, User
 from app.phone import normalize_phone
+from app.push import notify_user
 from app.schemas import MemberInvite, MemberOut, MemberUpdate, Message
 from app.security import hash_password
 
@@ -66,6 +67,7 @@ def list_members(
 @router.post("", response_model=MemberOut, status_code=201)
 def invite_member(
     payload: MemberInvite,
+    background: BackgroundTasks,
     db: Session = Depends(get_session),
     ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
 ) -> MemberOut:
@@ -109,6 +111,18 @@ def invite_member(
             existing.invited_by_id = membership.user_id
             db.commit()
             db.refresh(existing)
+            background.add_task(
+                notify_user,
+                db,
+                target.id,
+                title=f"Re-invited to {business.name}",
+                body=f"You've been re-invited as {payload.role.value}.",
+                data={
+                    "type": "member_invite",
+                    "business_id": business.id,
+                    "member_id": existing.id,
+                },
+            )
             return _to_out(existing, target)
         raise HTTPException(status_code=409, detail="user is already a member")
 
@@ -122,6 +136,18 @@ def invite_member(
     db.add(member)
     db.commit()
     db.refresh(member)
+    background.add_task(
+        notify_user,
+        db,
+        target.id,
+        title=f"Invited to {business.name}",
+        body=f"You've been added as {payload.role.value}. Open the app to accept.",
+        data={
+            "type": "member_invite",
+            "business_id": business.id,
+            "member_id": member.id,
+        },
+    )
     return _to_out(member, target)
 
 

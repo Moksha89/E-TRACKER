@@ -84,11 +84,8 @@
   },
   "settings": {
     "title": "Settings",
-    "language": "Language",
     "biometric_lock": "Lock app with biometrics",
     "biometric_unavailable": "Biometric hardware not available on this device.",
-    "backup": "Download backup (JSON)",
-    "english": "English",
-    "hindi": "हिंदी"
+    "backup": "Download backup (JSON)"
   }
 }

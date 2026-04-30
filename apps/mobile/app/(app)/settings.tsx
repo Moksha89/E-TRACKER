@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Share, StyleSheet, View } from 'react-native';
-import { Appbar, Button, Card, List, Switch, Text } from 'react-native-paper';
+import { Appbar, Button, Card, Switch, Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTranslation } from 'react-i18next';
@@ -8,17 +8,15 @@ import { useTranslation } from 'react-i18next';
 import { extractErrorMessage } from '@/api/client';
 import { fetchBackup } from '@/api/endpoints';
 import { Screen } from '@/components/Screen';
-import { setAppLocale, type SupportedLocale } from '@/i18n';
 import { useAppDispatch, useAppSelector } from '@/state/hooks';
 import { logout } from '@/state/auth';
-import { setBiometricLock, setLocale } from '@/state/settings';
+import { setBiometricLock } from '@/state/settings';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
   const businessId = useAppSelector((s) => s.auth.activeBusinessId);
-  const locale = useAppSelector((s) => s.settings.locale);
   const biometricLock = useAppSelector((s) => s.settings.biometricLock);
   const [hardware, setHardware] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,11 +28,6 @@ export default function SettingsScreen() {
       setHardware(has && enrolled);
     })();
   }, []);
-
-  const onPickLocale = async (next: SupportedLocale) => {
-    dispatch(setLocale(next));
-    await setAppLocale(next);
-  };
 
   const onToggleBiometric = async (value: boolean) => {
     if (value && hardware === false) {
@@ -72,22 +65,6 @@ export default function SettingsScreen() {
       </Appbar.Header>
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.container}>
-          <Card mode="elevated">
-            <Card.Content>
-              <Text variant="titleMedium">{t('settings.language')}</Text>
-              <List.Item
-                title={t('settings.english')}
-                left={(p) => <List.Icon {...p} icon={locale === 'en' ? 'check' : 'translate'} />}
-                onPress={() => onPickLocale('en')}
-              />
-              <List.Item
-                title={t('settings.hindi')}
-                left={(p) => <List.Icon {...p} icon={locale === 'hi' ? 'check' : 'translate'} />}
-                onPress={() => onPickLocale('hi')}
-              />
-            </Card.Content>
-          </Card>
-
           <Card mode="elevated">
             <Card.Content>
               <View style={styles.row}>

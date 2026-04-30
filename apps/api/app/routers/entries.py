@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from app.models import (
     PaymentMode,
     User,
 )
+from app.push import entry_summary, notify_business_members
 from app.schemas import EntryCreate, EntryListResponse, EntryOut, EntryUpdate
 
 router = APIRouter(prefix="/v1/businesses/{business_id}/books/{book_id}/entries", tags=["entries"])
@@ -53,6 +54,7 @@ def create_entry(
     business_id: str,
     book_id: str,
     payload: EntryCreate,
+    background: BackgroundTasks,
     db: Session = Depends(get_session),
     ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
     user: User = Depends(get_current_user),
@@ -76,6 +78,16 @@ def create_entry(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+    title, body, data = entry_summary(db, entry, user)
+    background.add_task(
+        notify_business_members,
+        db,
+        business.id,
+        title=title,
+        body=body,
+        exclude_user_id=user.id,
+        data=data,
+    )
     return EntryOut.model_validate(entry)
 
 
