@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "Cashbook Clone",
-    "slug": "cashbook-clone",
+    "name": "E-Tracker",
+    "slug": "etracker",
     "version": "0.1.0",
-    "scheme": "cashbookclone",
+    "scheme": "etracker",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.cashbookclone.app"
+      "bundleIdentifier": "in.etracker.app"
     },
     "android": {
-      "package": "in.cashbookclone.app",
+      "package": "in.etracker.app",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       }

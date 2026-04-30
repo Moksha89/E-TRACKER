@@ -1,7 +1,7 @@
 [project]
-name = "cashbook-api"
+name = "etracker-api"
 version = "0.1.0"
-description = "Cashbook clone backend"
+description = "E-Tracker backend"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "fastapi>=0.115",

@@ -1,6 +1,6 @@
-# Cashbook Clone
+# E-Tracker
 
-A clone of the CashBook ledger app (cashbook.in) — multi-business, multi-book cash in/out tracking with members, reports, attachments, and offline-first sync.
+A cash-book / ledger app — multi-business, multi-book cash in/out tracking with members, reports, attachments, and offline-first sync. Modeled on the CashBook (cashbook.in) UX.
 
 ## Architecture
 

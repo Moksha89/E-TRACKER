@@ -32,7 +32,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="Cashbook Clone API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="E-Tracker API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,4 +60,5 @@ app.include_router(export.router)
 app.include_router(attachments.router)
 app.include_router(attachments.download_router)
 app.include_router(backup.router)
+app.include_router(backup.restore_router)
 app.include_router(devices.router)

@@ -1,6 +1,6 @@
-# cashbook-mobile
+# etracker-mobile
 
-Expo + React Native + TypeScript app for the Cashbook clone.
+Expo + React Native + TypeScript app for E-Tracker.
 
 ## Setup
 
