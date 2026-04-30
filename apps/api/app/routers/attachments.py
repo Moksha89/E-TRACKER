@@ -11,7 +11,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.deps import get_current_user, get_session, require_business_access
+from app.deps import (
+    get_current_user,
+    get_current_user_with_query_token,
+    get_session,
+    require_business_access,
+)
 from app.models import (
     Book,
     Business,
@@ -162,7 +167,7 @@ download_router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
 def download_attachment(
     attachment_id: str,
     db: Session = Depends(get_session),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_with_query_token),
 ) -> FileResponse:
     """Authenticated download via attachment id; verifies user has access via the entry's book."""
     attachment = db.get(EntryAttachment, attachment_id)

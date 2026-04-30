@@ -1,11 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Appbar, Button, Card, Chip, Divider, SegmentedButtons, Text } from 'react-native-paper';
+import {
+  ActivityIndicator,
+  Appbar,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  SegmentedButtons,
+  Text,
+} from 'react-native-paper';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
-import { extractErrorMessage } from '@/api/client';
+import { extractErrorMessage, getApiBaseUrl } from '@/api/client';
 import {
   buildExportUrl,
+  downloadExport,
   fetchBookReport,
   fetchBusinessReport,
   listBooks,
@@ -13,6 +26,7 @@ import {
 import type { BookWithBalance, ExportFormat, ReportSummary } from '@/api/types';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
+import { palette } from '@/theme';
 import { formatCents } from '@/utils/money';
 
 type RangeKey = 'this_month' | 'last_30' | 'this_year' | 'all_time';
@@ -36,6 +50,28 @@ function rangeForKey(key: RangeKey): { from?: string; to?: string } {
   return {};
 }
 
+async function blobToBase64(blob: Blob): Promise<string> {
+  const reader = new FileReader();
+  return new Promise<string>((resolve, reject) => {
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+    reader.onload = () => {
+      const result = reader.result as string;
+      const idx = result.indexOf(',');
+      resolve(idx === -1 ? result : result.slice(idx + 1));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function blobToText(blob: Blob): Promise<string> {
+  const reader = new FileReader();
+  return new Promise<string>((resolve, reject) => {
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.readAsText(blob);
+  });
+}
+
 export default function ReportsScreen() {
   const router = useRouter();
   const businessId = useAppSelector((s) => s.auth.activeBusinessId);
@@ -46,6 +82,7 @@ export default function ReportsScreen() {
   const [report, setReport] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const loadBooks = useCallback(async () => {
     if (!businessId) return;
@@ -91,23 +128,63 @@ export default function ReportsScreen() {
     loadReport();
   }, [loadReport]);
 
-  const onExport = (fmt: ExportFormat) => {
+  const onExport = async (fmt: ExportFormat) => {
     if (!businessId || !bookId) {
       Alert.alert('Pick a book', 'Choose a book to export.');
       return;
     }
-    const url = buildExportUrl(businessId, bookId, fmt, rangeForKey(range));
-    Alert.alert(
-      'Export ready',
-      `Download URL:\n${url}\n\nThe app will open this in the browser to save the file once linking is wired.`,
-    );
+    setExporting(true);
+    try {
+      const { blob, filename } = await downloadExport(businessId, bookId, fmt, rangeForKey(range));
+      const base64 = await blobToBase64(blob);
+      const target = `${FileSystem.cacheDirectory ?? ''}${filename}`;
+      await FileSystem.writeAsStringAsync(target, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const can = await Sharing.isAvailableAsync();
+      if (can) {
+        await Sharing.shareAsync(target);
+      } else {
+        Alert.alert(
+          'Saved',
+          `Export saved at ${target}. Open the URL ${getApiBaseUrl()}${buildExportUrl(
+            businessId,
+            bookId,
+            fmt,
+            rangeForKey(range),
+          )} in your browser to download instead.`,
+        );
+      }
+    } catch (e) {
+      Alert.alert('Export failed', extractErrorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const onCopyCsv = async () => {
+    if (!businessId || !bookId) {
+      Alert.alert('Pick a book', 'Choose a book to copy.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const { blob } = await downloadExport(businessId, bookId, 'csv', rangeForKey(range));
+      const text = await blobToText(blob);
+      await Clipboard.setStringAsync(text);
+      Alert.alert('Copied', 'CSV report copied to clipboard.');
+    } catch (e) {
+      Alert.alert('Copy failed', extractErrorMessage(e));
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
     <>
-      <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
-        <Appbar.BackAction onPress={() => router.back()} color="#fff" />
-        <Appbar.Content title="Reports" color="#fff" />
+      <Appbar.Header style={styles.header}>
+        <Appbar.BackAction onPress={() => router.back()} color={palette.white} />
+        <Appbar.Content title="Reports" color={palette.white} />
       </Appbar.Header>
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.container}>
@@ -152,7 +229,7 @@ export default function ReportsScreen() {
             <ActivityIndicator style={{ marginTop: 32 }} />
           ) : (
             <>
-              <Card mode="elevated" style={styles.card}>
+              <Card mode="outlined" style={styles.card}>
                 <Card.Content>
                   <Text variant="titleMedium">Summary</Text>
                   <View style={styles.row}>
@@ -182,7 +259,7 @@ export default function ReportsScreen() {
                 </Card.Content>
               </Card>
 
-              <Card mode="elevated" style={styles.card}>
+              <Card mode="outlined" style={styles.card}>
                 <Card.Content>
                   <Text variant="titleMedium">By category</Text>
                   {report.by_category.length === 0 ? (
@@ -199,7 +276,7 @@ export default function ReportsScreen() {
                 </Card.Content>
               </Card>
 
-              <Card mode="elevated" style={styles.card}>
+              <Card mode="outlined" style={styles.card}>
                 <Card.Content>
                   <Text variant="titleMedium">By payment mode</Text>
                   {report.by_payment_mode.length === 0 ? (
@@ -216,20 +293,21 @@ export default function ReportsScreen() {
                 </Card.Content>
               </Card>
 
-              <Card mode="elevated" style={styles.card}>
+              <Card mode="outlined" style={styles.card}>
                 <Card.Content>
                   <Text variant="titleMedium">Export</Text>
                   <Text variant="bodySmall" style={styles.muted}>
                     {scope === 'book' && bookId
-                      ? 'Download entries from the selected book.'
-                      : 'Pick a book to export entries.'}
+                      ? 'Download or share entries from the selected book.'
+                      : 'Switch to a single book to enable export.'}
                   </Text>
                   <View style={styles.exportRow}>
                     <Button
                       mode="outlined"
                       icon="file-delimited"
                       onPress={() => onExport('csv')}
-                      disabled={scope !== 'book' || !bookId}
+                      loading={exporting}
+                      disabled={exporting || scope !== 'book' || !bookId}
                     >
                       CSV
                     </Button>
@@ -237,7 +315,8 @@ export default function ReportsScreen() {
                       mode="outlined"
                       icon="microsoft-excel"
                       onPress={() => onExport('xlsx')}
-                      disabled={scope !== 'book' || !bookId}
+                      loading={exporting}
+                      disabled={exporting || scope !== 'book' || !bookId}
                     >
                       Excel
                     </Button>
@@ -245,9 +324,19 @@ export default function ReportsScreen() {
                       mode="outlined"
                       icon="file-pdf-box"
                       onPress={() => onExport('pdf')}
-                      disabled={scope !== 'book' || !bookId}
+                      loading={exporting}
+                      disabled={exporting || scope !== 'book' || !bookId}
                     >
                       PDF
+                    </Button>
+                    <Button
+                      mode="contained"
+                      icon="content-copy"
+                      onPress={onCopyCsv}
+                      loading={exporting}
+                      disabled={exporting || scope !== 'book' || !bookId}
+                    >
+                      Copy
                     </Button>
                   </View>
                 </Card.Content>
@@ -261,18 +350,25 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { backgroundColor: palette.black },
   container: { padding: 16, gap: 16, paddingBottom: 32 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { marginRight: 4 },
   range: { marginTop: 4 },
-  card: {},
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 },
+  card: { backgroundColor: palette.surface },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 8,
+  },
   cell: { flex: 1 },
-  in: { color: '#16A34A', fontWeight: '600' },
-  out: { color: '#DC2626', fontWeight: '600' },
+  in: { color: palette.cashIn, fontWeight: '600' },
+  out: { color: palette.cashOut, fontWeight: '600' },
   net: { fontWeight: '700' },
   divider: { marginVertical: 8 },
-  muted: { color: '#64748B', marginTop: 4 },
-  error: { color: '#DC2626' },
-  exportRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  muted: { color: palette.textMuted, marginTop: 4 },
+  error: { color: palette.cashOut },
+  exportRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
 });

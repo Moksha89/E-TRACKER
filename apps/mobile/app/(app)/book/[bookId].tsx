@@ -1,15 +1,16 @@
 import { useCallback, useState } from 'react';
 import { FlatList, Share, StyleSheet, View } from 'react-native';
-import { Appbar, Card, FAB, IconButton, Text } from 'react-native-paper';
+import { Appbar, Card, FAB, Text, TouchableRipple } from 'react-native-paper';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { extractErrorMessage } from '@/api/client';
-import { deleteEntry, getBook, listEntries } from '@/api/endpoints';
+import { getBook, listEntries } from '@/api/endpoints';
 import type { BookWithBalance, Entry } from '@/api/types';
 import { Empty } from '@/components/Empty';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
+import { palette } from '@/theme';
 import { formatCents } from '@/utils/money';
 
 export default function BookDetailScreen() {
@@ -47,38 +48,40 @@ export default function BookDetailScreen() {
     }, [load]),
   );
 
-  const onDelete = async (entryId: string) => {
-    if (!businessId || !bookId) return;
-    try {
-      await deleteEntry(businessId, bookId, entryId);
-      await load();
-    } catch (e) {
-      setError(extractErrorMessage(e));
-    }
-  };
-
   const currency = book?.currency ?? 'INR';
 
   return (
     <>
-      <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
-        <Appbar.BackAction onPress={() => router.back()} color="#fff" />
-        <Appbar.Content title={book?.name ?? 'Book'} color="#fff" />
+      <Appbar.Header style={styles.header}>
+        <Appbar.BackAction onPress={() => router.back()} color={palette.white} />
+        <Appbar.Content title={book?.name ?? 'Book'} color={palette.white} />
         {book ? (
-          <Appbar.Action
-            icon="share-variant"
-            color="#fff"
-            onPress={() =>
-              Share.share({
-                message: t('books.share_summary', {
-                  name: book.name,
-                  in: formatCents(book.in_total_cents, currency),
-                  out: formatCents(book.out_total_cents, currency),
-                  net: formatCents(book.net_balance_cents, currency),
-                }),
-              })
-            }
-          />
+          <>
+            <Appbar.Action
+              icon="pencil"
+              color={palette.white}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/book/[bookId]/edit',
+                  params: { bookId: String(bookId) },
+                })
+              }
+            />
+            <Appbar.Action
+              icon="share-variant"
+              color={palette.white}
+              onPress={() =>
+                Share.share({
+                  message: t('books.share_summary', {
+                    name: book.name,
+                    in: formatCents(book.in_total_cents, currency),
+                    out: formatCents(book.out_total_cents, currency),
+                    net: formatCents(book.net_balance_cents, currency),
+                  }),
+                })
+              }
+            />
+          </>
         ) : null}
       </Appbar.Header>
       <Screen padded={false}>
@@ -93,8 +96,8 @@ export default function BookDetailScreen() {
               <Text style={styles.pillValue}>{formatCents(book.out_total_cents, currency)}</Text>
             </View>
             <View style={[styles.pill, styles.net]}>
-              <Text style={styles.pillLabel}>Balance</Text>
-              <Text style={styles.pillValue}>
+              <Text style={[styles.pillLabel, styles.netText]}>Balance</Text>
+              <Text style={[styles.pillValue, styles.netText]}>
                 {formatCents(book.net_balance_cents, currency)}
               </Text>
             </View>
@@ -115,38 +118,55 @@ export default function BookDetailScreen() {
           contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 96 }}
           ListEmptyComponent={
             !loading ? (
-              <Empty title="No entries yet" subtitle="Tap + to add your first cash entry." />
+              <Empty
+                icon="cash-multiple"
+                title="No entries yet"
+                subtitle="Tap + to log your first cash entry."
+              />
             ) : null
           }
           renderItem={({ item }) => (
-            <Card mode="outlined">
-              <Card.Content style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="titleMedium">
-                    {formatCents(item.amount_cents, currency)}
-                  </Text>
-                  <Text variant="bodySmall" style={{ opacity: 0.7 }}>
-                    {new Date(item.occurred_at).toLocaleString()}
-                  </Text>
-                  {item.description ? (
-                    <Text variant="bodyMedium" style={{ marginTop: 4 }}>
-                      {item.description}
+            <Card mode="outlined" style={styles.entryCard}>
+              <TouchableRipple
+                onPress={() =>
+                  router.push({
+                    pathname: '/(app)/book/[bookId]/entry/[entryId]',
+                    params: { bookId: String(bookId), entryId: item.id },
+                  })
+                }
+              >
+                <Card.Content style={styles.row}>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      variant="titleMedium"
+                      style={{
+                        color: item.type === 'in' ? palette.cashIn : palette.cashOut,
+                        fontWeight: '700',
+                      }}
+                    >
+                      {item.type === 'in' ? '+' : '−'} {formatCents(item.amount_cents, currency)}
                     </Text>
-                  ) : null}
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={item.type === 'in' ? styles.inText : styles.outText}>
-                    {item.type === 'in' ? 'Cash In' : 'Cash Out'}
-                  </Text>
-                  <IconButton icon="delete-outline" onPress={() => onDelete(item.id)} />
-                </View>
-              </Card.Content>
+                    <Text variant="bodySmall" style={styles.muted}>
+                      {new Date(item.occurred_at).toLocaleString()}
+                    </Text>
+                    {item.description ? (
+                      <Text variant="bodyMedium" style={{ marginTop: 4 }}>
+                        {item.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.chevron}>
+                    <Text style={styles.muted}>›</Text>
+                  </View>
+                </Card.Content>
+              </TouchableRipple>
             </Card>
           )}
         />
 
         <FAB
           icon="plus"
+          color={palette.white}
           style={styles.fab}
           onPress={() =>
             router.push({
@@ -161,15 +181,25 @@ export default function BookDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { backgroundColor: palette.black },
   summary: { flexDirection: 'row', padding: 16, gap: 8 },
-  pill: { flex: 1, padding: 12, borderRadius: 8 },
-  pillLabel: { fontSize: 12, opacity: 0.7 },
+  pill: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+  },
+  pillLabel: { fontSize: 12, color: palette.textMuted },
   pillValue: { fontSize: 16, fontWeight: '700', marginTop: 4 },
-  in: { backgroundColor: '#DCFCE7' },
-  out: { backgroundColor: '#FEE2E2' },
-  net: { backgroundColor: '#E0F2FE' },
+  in: {},
+  out: {},
+  net: { backgroundColor: palette.black, borderColor: palette.black },
+  netText: { color: palette.white },
   row: { flexDirection: 'row', alignItems: 'center' },
-  inText: { color: '#16A34A', fontWeight: '700' },
-  outText: { color: '#DC2626', fontWeight: '700' },
-  fab: { position: 'absolute', right: 16, bottom: 24 },
+  entryCard: { backgroundColor: palette.surface },
+  muted: { color: palette.textMuted },
+  chevron: { paddingHorizontal: 8 },
+  fab: { position: 'absolute', right: 16, bottom: 24, backgroundColor: palette.black },
 });

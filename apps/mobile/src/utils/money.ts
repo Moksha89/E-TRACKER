@@ -18,3 +18,7 @@ export function parseAmount(input: string): number | null {
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.round(value * 100);
 }
+
+export function formatCentsRaw(cents: number): string {
+  return (cents / 100).toFixed(2);
+}

@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { Provider as ReduxProvider, useSelector } from 'react-redux';
@@ -12,15 +12,7 @@ import { configureClient } from '@/api/client';
 import '@/i18n';
 import type { RootState } from '@/state/store';
 import { persistor, store } from '@/state/store';
-
-const theme = {
-  ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: '#16A34A',
-    secondary: '#0EA5E9',
-  },
-};
+import { theme } from '@/theme';
 
 function BiometricGate({ children }: { children: React.ReactNode }) {
   const enabled = useSelector<RootState, boolean>((s) => s.settings.biometricLock);

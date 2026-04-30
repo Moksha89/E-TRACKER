@@ -11,6 +11,10 @@ export const API_BASE_URL: string =
   (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl ??
   fallback;
 
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 let _client: AxiosInstance | null = null;
 
 export function configureClient(store: Store<RootState>): AxiosInstance {
