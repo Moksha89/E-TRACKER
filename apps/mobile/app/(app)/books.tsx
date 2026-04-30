@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 
 import { extractErrorMessage } from '@/api/client';
 import { listBooks } from '@/api/endpoints';
+import { useRealtime } from '@/api/realtime';
 import type { BookWithBalance } from '@/api/types';
 import { Empty } from '@/components/Empty';
 import { Screen } from '@/components/Screen';
@@ -15,6 +16,7 @@ import { formatCents } from '@/utils/money';
 export default function BooksScreen() {
   const router = useRouter();
   const businessId = useAppSelector((s) => s.auth.activeBusinessId);
+  const accessToken = useAppSelector((s) => s.auth.accessToken);
   const [books, setBooks] = useState<BookWithBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,21 @@ export default function BooksScreen() {
       load();
     }, [load]),
   );
+
+  useRealtime({
+    enabled: true,
+    businessId,
+    token: accessToken,
+    onEvent: (e) => {
+      if (
+        e.type === 'entry.created' ||
+        e.type === 'entry.updated' ||
+        e.type === 'entry.deleted'
+      ) {
+        load();
+      }
+    },
+  });
 
   return (
     <>

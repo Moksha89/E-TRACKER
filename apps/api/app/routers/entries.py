@@ -18,6 +18,7 @@ from app.models import (
     User,
 )
 from app.push import entry_summary, notify_business_members
+from app.realtime import broadcast
 from app.schemas import EntryCreate, EntryListResponse, EntryOut, EntryUpdate
 
 router = APIRouter(prefix="/v1/businesses/{business_id}/books/{book_id}/entries", tags=["entries"])
@@ -88,7 +89,13 @@ def create_entry(
         exclude_user_id=user.id,
         data=data,
     )
-    return EntryOut.model_validate(entry)
+    out = EntryOut.model_validate(entry)
+    broadcast(
+        business.id,
+        "entry.created",
+        {"book_id": book.id, "entry": out.model_dump(mode="json"), "by_user_id": user.id},
+    )
+    return out
 
 
 @router.get("", response_model=EntryListResponse)
@@ -188,7 +195,13 @@ def update_entry(
         setattr(entry, field, value)
     db.commit()
     db.refresh(entry)
-    return EntryOut.model_validate(entry)
+    out = EntryOut.model_validate(entry)
+    broadcast(
+        business.id,
+        "entry.updated",
+        {"book_id": entry.book_id, "entry": out.model_dump(mode="json")},
+    )
+    return out
 
 
 @router.delete("/{entry_id}", status_code=204)
@@ -208,3 +221,8 @@ def delete_entry(
         raise HTTPException(status_code=404, detail="entry not found")
     entry.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     db.commit()
+    broadcast(
+        business.id,
+        "entry.deleted",
+        {"book_id": entry.book_id, "entry_id": entry.id},
+    )
