@@ -90,7 +90,16 @@ def _send_via_gateway(phone: str, code: str) -> OtpDeliveryResult:
                 delivered=False,
                 detail=str(exc),
             )
-    body = resp.json() if resp.content else {}
+    try:
+        body = resp.json() if resp.content else {}
+    except ValueError as exc:
+        logger.error("telegram gateway returned non-JSON body: %s", exc)
+        return OtpDeliveryResult(
+            channel=OtpChannel.TELEGRAM_GATEWAY,
+            request_id=None,
+            delivered=False,
+            detail=f"non-JSON response from gateway (status {resp.status_code})",
+        )
     if not body.get("ok"):
         return OtpDeliveryResult(
             channel=OtpChannel.TELEGRAM_GATEWAY,
@@ -120,7 +129,16 @@ def _send_via_bot(telegram_user_id: str, code: str) -> OtpDeliveryResult:
                 delivered=False,
                 detail=str(exc),
             )
-    body = resp.json() if resp.content else {}
+    try:
+        body = resp.json() if resp.content else {}
+    except ValueError as exc:
+        logger.error("telegram bot returned non-JSON body: %s", exc)
+        return OtpDeliveryResult(
+            channel=OtpChannel.TELEGRAM_BOT,
+            request_id=None,
+            delivered=False,
+            detail=f"non-JSON response from bot (status {resp.status_code})",
+        )
     if not body.get("ok"):
         return OtpDeliveryResult(
             channel=OtpChannel.TELEGRAM_BOT,
