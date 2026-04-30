@@ -9,14 +9,15 @@ import type { Member, MemberRole } from '@/api/types';
 import { Empty } from '@/components/Empty';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
+import { palette } from '@/theme';
 
 const ROLES: MemberRole[] = ['partner', 'staff', 'viewer'];
 
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: '#16A34A',
-  partner: '#2563EB',
-  staff: '#9333EA',
-  viewer: '#64748B',
+  owner: palette.black,
+  partner: palette.ink,
+  staff: '#3F3F46',
+  viewer: palette.textMuted,
 };
 
 export default function MembersScreen() {
@@ -92,9 +93,9 @@ export default function MembersScreen() {
 
   return (
     <>
-      <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
-        <Appbar.BackAction onPress={() => router.back()} color="#fff" />
-        <Appbar.Content title="Members" color="#fff" />
+      <Appbar.Header style={styles.header}>
+        <Appbar.BackAction onPress={() => router.back()} color={palette.white} />
+        <Appbar.Content title="Members" color={palette.white} />
       </Appbar.Header>
       <Screen padded={false}>
         {error ? (
@@ -117,7 +118,7 @@ export default function MembersScreen() {
             ) : null
           }
           renderItem={({ item }) => (
-            <Card mode="elevated">
+            <Card mode="outlined" style={styles.card}>
               <Card.Content>
                 <View style={styles.row}>
                   <View style={{ flex: 1 }}>
@@ -133,7 +134,7 @@ export default function MembersScreen() {
                   <Chip
                     compact
                     style={{ backgroundColor: ROLE_COLORS[item.role] }}
-                    textStyle={{ color: '#fff' }}
+                    textStyle={{ color: palette.white }}
                   >
                     {item.role}
                   </Chip>
@@ -167,7 +168,7 @@ export default function MembersScreen() {
                       </Menu>
                       <Button
                         mode="text"
-                        textColor="#DC2626"
+                        textColor={palette.cashOut}
                         compact
                         onPress={() => onRemove(item)}
                       >
@@ -182,6 +183,7 @@ export default function MembersScreen() {
         />
         <FAB
           icon="account-plus"
+          color={palette.white}
           style={styles.fab}
           onPress={() => router.push('/(app)/members-invite')}
         />
@@ -191,10 +193,12 @@ export default function MembersScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { backgroundColor: palette.black },
   error: { padding: 16 },
+  card: { backgroundColor: palette.surface },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  phone: { color: '#64748B', marginTop: 2 },
+  phone: { color: palette.textMuted, marginTop: 2 },
   statusRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
   actions: { flexDirection: 'row', gap: 8, marginLeft: 'auto' },
-  fab: { position: 'absolute', right: 16, bottom: 24 },
+  fab: { position: 'absolute', right: 16, bottom: 24, backgroundColor: palette.black },
 });

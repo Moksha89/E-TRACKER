@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -105,3 +107,16 @@ def update_business(
     db.commit()
     db.refresh(business)
     return _to_out(business, membership.role)
+
+
+@router.delete("/{business_id}", status_code=204)
+def delete_business(
+    business_id: str,
+    db: Session = Depends(get_session),
+    ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
+) -> None:
+    business, membership = ctx
+    if membership.role != MemberRole.OWNER:
+        raise HTTPException(status_code=403, detail="only the owner can delete this business")
+    business.deleted_at = datetime.now(UTC).replace(tzinfo=None)
+    db.commit()

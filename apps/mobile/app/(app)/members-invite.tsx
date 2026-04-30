@@ -8,6 +8,7 @@ import { inviteMember } from '@/api/endpoints';
 import type { MemberRole } from '@/api/types';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
+import { palette } from '@/theme';
 
 const ROLE_OPTIONS: MemberRole[] = ['partner', 'staff', 'viewer'];
 
@@ -106,10 +107,10 @@ export default function InviteMemberScreen() {
 
 const styles = StyleSheet.create({
   title: { marginBottom: 8 },
-  subtitle: { color: '#64748B', marginBottom: 16 },
+  subtitle: { color: palette.textMuted, marginBottom: 16 },
   input: { marginBottom: 12 },
   label: { marginTop: 8 },
-  roleHint: { color: '#64748B', marginBottom: 8 },
+  roleHint: { color: palette.textMuted, marginBottom: 8 },
   chip: { marginBottom: 8, alignSelf: 'flex-start' },
   submit: { marginTop: 16 },
 });

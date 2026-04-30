@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Appbar, Card, FAB, Text } from 'react-native-paper';
+import { Appbar, Card, FAB, IconButton, Menu, Text } from 'react-native-paper';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { extractErrorMessage } from '@/api/client';
@@ -9,6 +9,7 @@ import type { BookWithBalance } from '@/api/types';
 import { Empty } from '@/components/Empty';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
+import { palette } from '@/theme';
 import { formatCents } from '@/utils/money';
 
 export default function BooksScreen() {
@@ -17,6 +18,7 @@ export default function BooksScreen() {
   const [books, setBooks] = useState<BookWithBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!businessId) return;
@@ -44,22 +46,27 @@ export default function BooksScreen() {
 
   return (
     <>
-      <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
-        <Appbar.BackAction onPress={() => router.back()} color="#fff" />
-        <Appbar.Content title="Cashbooks" color="#fff" />
+      <Appbar.Header style={styles.header}>
+        <Appbar.BackAction onPress={() => router.back()} color={palette.white} />
+        <Appbar.Content title="Books" color={palette.white} />
+        <Appbar.Action
+          icon="tag-multiple-outline"
+          color={palette.white}
+          onPress={() => router.push('/(app)/categories')}
+        />
         <Appbar.Action
           icon="account-multiple"
-          color="#fff"
+          color={palette.white}
           onPress={() => router.push('/(app)/members')}
         />
         <Appbar.Action
           icon="chart-bar"
-          color="#fff"
+          color={palette.white}
           onPress={() => router.push('/(app)/reports')}
         />
         <Appbar.Action
           icon="cog"
-          color="#fff"
+          color={palette.white}
           onPress={() => router.push('/(app)/settings')}
         />
       </Appbar.Header>
@@ -78,20 +85,48 @@ export default function BooksScreen() {
           ListEmptyComponent={
             !loading ? (
               <Empty
+                icon="notebook-outline"
                 title="No books yet"
-                subtitle="Tap + to add your first cashbook."
+                subtitle="Tap + to add your first book."
               />
             ) : null
           }
           renderItem={({ item }) => (
             <Card
-              mode="elevated"
+              mode="outlined"
+              style={styles.card}
               onPress={() =>
                 router.push({ pathname: '/(app)/book/[bookId]', params: { bookId: item.id } })
               }
+              onLongPress={() => setMenuFor(item.id)}
             >
               <Card.Content>
-                <Text variant="titleMedium">{item.name}</Text>
+                <View style={styles.cardHeader}>
+                  <Text variant="titleMedium" style={{ flex: 1 }}>{item.name}</Text>
+                  <Menu
+                    visible={menuFor === item.id}
+                    onDismiss={() => setMenuFor(null)}
+                    anchor={
+                      <IconButton
+                        icon="dots-vertical"
+                        size={18}
+                        onPress={() => setMenuFor(item.id)}
+                      />
+                    }
+                  >
+                    <Menu.Item
+                      title="Edit"
+                      leadingIcon="pencil"
+                      onPress={() => {
+                        setMenuFor(null);
+                        router.push({
+                          pathname: '/(app)/book/[bookId]/edit',
+                          params: { bookId: item.id },
+                        });
+                      }}
+                    />
+                  </Menu>
+                </View>
                 <View style={styles.row}>
                   <Text style={[styles.cell, styles.in]}>
                     + {formatCents(item.in_total_cents, item.currency)}
@@ -110,6 +145,7 @@ export default function BooksScreen() {
         <FAB
           icon="plus"
           style={styles.fab}
+          color={palette.white}
           onPress={() => router.push('/(app)/books-new')}
         />
       </Screen>
@@ -118,11 +154,14 @@ export default function BooksScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { backgroundColor: palette.black },
   error: { padding: 16 },
+  card: { backgroundColor: palette.surface },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   row: { flexDirection: 'row', gap: 16, marginTop: 8 },
   cell: { flex: 1 },
-  in: { color: '#16A34A' },
-  out: { color: '#DC2626' },
+  in: { color: palette.cashIn, fontWeight: '600' },
+  out: { color: palette.cashOut, fontWeight: '600' },
   net: { marginTop: 8, fontWeight: '600' },
-  fab: { position: 'absolute', right: 16, bottom: 24 },
+  fab: { position: 'absolute', right: 16, bottom: 24, backgroundColor: palette.black },
 });

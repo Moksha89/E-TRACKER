@@ -1,36 +1,34 @@
-import { useEffect, useState } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
+  ActivityIndicator,
   Appbar,
   Button,
-  Chip,
   HelperText,
   SegmentedButtons,
   Text,
   TextInput,
   TouchableRipple,
 } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { extractErrorMessage } from '@/api/client';
 import {
-  createEntry,
+  getEntry,
   listCategories,
   listPaymentModes,
-  uploadAttachment,
+  updateEntry,
 } from '@/api/endpoints';
 import type { Category, EntryType, PaymentMode } from '@/api/types';
 import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/state/hooks';
 import { palette } from '@/theme';
-import { parseAmount } from '@/utils/money';
+import { formatCentsRaw, parseAmount } from '@/utils/money';
 
-export default function NewEntryScreen() {
+export default function EntryEditScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ bookId: string }>();
-  const bookId = params.bookId;
+  const params = useLocalSearchParams<{ bookId: string; entryId: string }>();
   const businessId = useAppSelector((s) => s.auth.activeBusinessId);
 
   const [type, setType] = useState<EntryType>('in');
@@ -43,59 +41,58 @@ export default function NewEntryScreen() {
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [paymentModeId, setPaymentModeId] = useState<string | null>(null);
-  const [attachment, setAttachment] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const pickAttachment = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      setError('Photo library permission is required to attach a receipt.');
-      return;
+  const load = useCallback(async () => {
+    if (!businessId || !params.bookId || !params.entryId) return;
+    setLoading(true);
+    try {
+      const [entry, cats, pms] = await Promise.all([
+        getEntry(businessId, String(params.bookId), String(params.entryId)),
+        listCategories(businessId),
+        listPaymentModes(businessId),
+      ]);
+      setType(entry.type);
+      setAmount(formatCentsRaw(entry.amount_cents));
+      setDescription(entry.description ?? '');
+      setOccurredAt(new Date(entry.occurred_at));
+      setCategoryId(entry.category_id);
+      setPaymentModeId(entry.payment_mode_id);
+      setCategories(cats);
+      setPaymentModes(pms);
+    } catch (e) {
+      setError(extractErrorMessage(e));
+    } finally {
+      setLoading(false);
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setAttachment(result.assets[0]);
-    }
-  };
+  }, [businessId, params.bookId, params.entryId]);
 
-  useEffect(() => {
-    if (!businessId) return;
-    Promise.all([listCategories(businessId), listPaymentModes(businessId)])
-      .then(([cats, pms]) => {
-        setCategories(cats);
-        setPaymentModes(pms);
-      })
-      .catch((e) => setError(extractErrorMessage(e)));
-  }, [businessId]);
+  useFocusEffect(useCallback(() => {
+    load();
+  }, [load]));
 
-  const onChangeDate = (_: unknown, selected?: Date) => {
+  const onChangeDate = (_: unknown, sel?: Date) => {
     if (Platform.OS !== 'ios') setShowDate(false);
-    if (selected) {
+    if (sel) {
       const next = new Date(occurredAt);
-      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      next.setFullYear(sel.getFullYear(), sel.getMonth(), sel.getDate());
       setOccurredAt(next);
     }
   };
-
-  const onChangeTime = (_: unknown, selected?: Date) => {
+  const onChangeTime = (_: unknown, sel?: Date) => {
     if (Platform.OS !== 'ios') setShowTime(false);
-    if (selected) {
+    if (sel) {
       const next = new Date(occurredAt);
-      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      next.setHours(sel.getHours(), sel.getMinutes(), 0, 0);
       setOccurredAt(next);
     }
   };
 
   const submit = async () => {
     setError(null);
-    if (!businessId || !bookId) {
-      setError('Missing context');
-      return;
-    }
+    if (!businessId || !params.bookId || !params.entryId) return;
     const cents = parseAmount(amount);
     if (cents === null) {
       setError('Enter a valid amount');
@@ -103,22 +100,14 @@ export default function NewEntryScreen() {
     }
     setBusy(true);
     try {
-      const created = await createEntry(businessId, String(bookId), {
+      await updateEntry(businessId, String(params.bookId), String(params.entryId), {
         type,
         amount_cents: cents,
         occurred_at: occurredAt.toISOString(),
-        description: description.trim() || undefined,
-        category_id: categoryId ?? undefined,
-        payment_mode_id: paymentModeId ?? undefined,
+        description: description.trim() || null,
+        category_id: categoryId,
+        payment_mode_id: paymentModeId,
       });
-      if (attachment) {
-        const filename = attachment.fileName ?? `receipt-${Date.now()}.jpg`;
-        await uploadAttachment(businessId, String(bookId), created.id, {
-          uri: attachment.uri,
-          name: filename,
-          type: attachment.mimeType ?? 'image/jpeg',
-        });
-      }
       router.back();
     } catch (e) {
       setError(extractErrorMessage(e));
@@ -127,11 +116,19 @@ export default function NewEntryScreen() {
     }
   };
 
+  if (loading) {
+    return (
+      <Screen>
+        <ActivityIndicator />
+      </Screen>
+    );
+  }
+
   return (
     <>
       <Appbar.Header style={styles.header}>
         <Appbar.BackAction color={palette.white} onPress={() => router.back()} />
-        <Appbar.Content color={palette.white} title="Add entry" />
+        <Appbar.Content color={palette.white} title="Edit entry" />
       </Appbar.Header>
       <Screen scroll>
         <SegmentedButtons
@@ -177,7 +174,7 @@ export default function NewEntryScreen() {
         ) : null}
 
         <TextInput
-          label="Description (optional)"
+          label="Description"
           value={description}
           onChangeText={setDescription}
           mode="outlined"
@@ -185,9 +182,7 @@ export default function NewEntryScreen() {
           style={styles.input}
         />
 
-        <Text variant="labelLarge" style={styles.section}>
-          Category
-        </Text>
+        <Text variant="labelLarge" style={styles.section}>Category</Text>
         <View style={styles.chips}>
           {categories.map((c) => (
             <Button
@@ -201,9 +196,7 @@ export default function NewEntryScreen() {
           ))}
         </View>
 
-        <Text variant="labelLarge" style={styles.section}>
-          Payment mode
-        </Text>
+        <Text variant="labelLarge" style={styles.section}>Payment mode</Text>
         <View style={styles.chips}>
           {paymentModes.map((p) => (
             <Button
@@ -217,40 +210,12 @@ export default function NewEntryScreen() {
           ))}
         </View>
 
-        <Text variant="labelLarge" style={styles.section}>
-          Attachment
-        </Text>
-        <View style={styles.attachmentRow}>
-          <Button mode="outlined" icon="paperclip" onPress={pickAttachment}>
-            {attachment ? 'Replace' : 'Attach receipt'}
-          </Button>
-          {attachment ? (
-            <>
-              <Image source={{ uri: attachment.uri }} style={styles.thumb} />
-              <Chip
-                compact
-                icon="close"
-                onPress={() => setAttachment(null)}
-                style={styles.removeChip}
-              >
-                Remove
-              </Chip>
-            </>
-          ) : null}
-        </View>
-
         <HelperText type="error" visible={!!error}>
           {error ?? ' '}
         </HelperText>
 
-        <Button
-          mode="contained"
-          onPress={submit}
-          loading={busy}
-          disabled={busy}
-          style={{ marginTop: 8 }}
-        >
-          Save entry
+        <Button mode="contained" onPress={submit} loading={busy} disabled={busy}>
+          Save changes
         </Button>
       </Screen>
     </>
@@ -262,9 +227,6 @@ const styles = StyleSheet.create({
   input: { marginBottom: 12 },
   section: { marginTop: 12, marginBottom: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  attachmentRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  thumb: { width: 64, height: 64, borderRadius: 6 },
-  removeChip: { alignSelf: 'center' },
   dateRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   dateBtn: {
     flex: 1,

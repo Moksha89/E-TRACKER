@@ -62,6 +62,17 @@ class UserOut(_ORM):
     default_business_id: str | None
 
 
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    default_business_id: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
 # ---------- business ----------
 
 

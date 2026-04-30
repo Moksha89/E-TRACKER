@@ -60,6 +60,22 @@ export async function fetchMe(): Promise<User> {
   return data;
 }
 
+export async function updateMe(input: {
+  name?: string | null;
+  email?: string | null;
+  default_business_id?: string | null;
+}): Promise<User> {
+  const { data } = await getClient().patch<User>('/v1/me', input);
+  return data;
+}
+
+export async function changePassword(input: {
+  current_password: string;
+  new_password: string;
+}): Promise<void> {
+  await getClient().post('/v1/me/password', input);
+}
+
 // businesses -----
 
 export async function listBusinesses(): Promise<Business[]> {
@@ -75,6 +91,23 @@ export async function createBusiness(input: {
 }): Promise<Business> {
   const { data } = await getClient().post<Business>('/v1/businesses', input);
   return data;
+}
+
+export async function updateBusiness(
+  businessId: string,
+  input: {
+    name?: string | null;
+    currency?: string | null;
+    gst_number?: string | null;
+    address?: string | null;
+  },
+): Promise<Business> {
+  const { data } = await getClient().patch<Business>(`/v1/businesses/${businessId}`, input);
+  return data;
+}
+
+export async function deleteBusiness(businessId: string): Promise<void> {
+  await getClient().delete(`/v1/businesses/${businessId}`);
 }
 
 // books -----
@@ -99,6 +132,22 @@ export async function getBook(businessId: string, bookId: string): Promise<BookW
     `/v1/businesses/${businessId}/books/${bookId}`,
   );
   return data;
+}
+
+export async function updateBook(
+  businessId: string,
+  bookId: string,
+  input: { name?: string; opening_balance_cents?: number; archived?: boolean },
+): Promise<Book> {
+  const { data } = await getClient().patch<Book>(
+    `/v1/businesses/${businessId}/books/${bookId}`,
+    input,
+  );
+  return data;
+}
+
+export async function deleteBook(businessId: string, bookId: string): Promise<void> {
+  await getClient().delete(`/v1/businesses/${businessId}/books/${bookId}`);
 }
 
 // entries -----
@@ -147,6 +196,38 @@ export async function createEntry(
   return data;
 }
 
+export async function getEntry(
+  businessId: string,
+  bookId: string,
+  entryId: string,
+): Promise<Entry> {
+  const { data } = await getClient().get<Entry>(
+    `/v1/businesses/${businessId}/books/${bookId}/entries/${entryId}`,
+  );
+  return data;
+}
+
+export async function updateEntry(
+  businessId: string,
+  bookId: string,
+  entryId: string,
+  input: {
+    type?: EntryType;
+    amount_cents?: number;
+    occurred_at?: string;
+    description?: string | null;
+    party_id?: string | null;
+    category_id?: string | null;
+    payment_mode_id?: string | null;
+  },
+): Promise<Entry> {
+  const { data } = await getClient().patch<Entry>(
+    `/v1/businesses/${businessId}/books/${bookId}/entries/${entryId}`,
+    input,
+  );
+  return data;
+}
+
 export async function deleteEntry(
   businessId: string,
   bookId: string,
@@ -160,6 +241,36 @@ export async function deleteEntry(
 export async function listCategories(businessId: string): Promise<Category[]> {
   const { data } = await getClient().get<Category[]>(`/v1/businesses/${businessId}/categories`);
   return data;
+}
+
+export async function createCategory(
+  businessId: string,
+  input: { name: string; color?: string; sort_order?: number },
+): Promise<Category> {
+  const { data } = await getClient().post<Category>(
+    `/v1/businesses/${businessId}/categories`,
+    input,
+  );
+  return data;
+}
+
+export async function updateCategory(
+  businessId: string,
+  categoryId: string,
+  input: { name?: string; color?: string | null; sort_order?: number },
+): Promise<Category> {
+  const { data } = await getClient().patch<Category>(
+    `/v1/businesses/${businessId}/categories/${categoryId}`,
+    input,
+  );
+  return data;
+}
+
+export async function deleteCategory(
+  businessId: string,
+  categoryId: string,
+): Promise<void> {
+  await getClient().delete(`/v1/businesses/${businessId}/categories/${categoryId}`);
 }
 
 export async function listPaymentModes(businessId: string): Promise<PaymentMode[]> {

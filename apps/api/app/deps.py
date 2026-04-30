@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,12 +16,7 @@ def get_session() -> Iterator[Session]:
     yield from get_db()
 
 
-def get_current_user(
-    token: str | None = Depends(oauth2_scheme),
-    db: Session = Depends(get_session),
-) -> User:
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing token")
+def _user_from_token(db: Session, token: str) -> User:
     try:
         payload = decode_token(token)
     except ValueError as exc:
@@ -35,6 +30,31 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user not found")
     return user
+
+
+def get_current_user(
+    token: str | None = Depends(oauth2_scheme),
+    db: Session = Depends(get_session),
+) -> User:
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing token")
+    return _user_from_token(db, token)
+
+
+def get_current_user_with_query_token(
+    header_token: str | None = Depends(oauth2_scheme),
+    query_token: str | None = Query(default=None, alias="token"),
+    db: Session = Depends(get_session),
+) -> User:
+    """Same as get_current_user but also accepts ``?token=...`` query param.
+
+    Useful for endpoints that are loaded by HTML elements (e.g. <Image src=...>)
+    that cannot set custom Authorization headers.
+    """
+    token = header_token or query_token
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing token")
+    return _user_from_token(db, token)
 
 
 def require_business_access(

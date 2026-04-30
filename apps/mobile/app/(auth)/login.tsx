@@ -8,6 +8,7 @@ import { login } from '@/api/endpoints';
 import { Screen } from '@/components/Screen';
 import { setSession } from '@/state/auth';
 import { useAppDispatch } from '@/state/hooks';
+import { palette } from '@/theme';
 import { isLikelyValidPhone, normalizePhoneInput } from '@/utils/phone';
 
 export default function LoginScreen() {
@@ -107,5 +108,5 @@ const styles = StyleSheet.create({
   input: { marginBottom: 12 },
   cta: { marginTop: 8, paddingVertical: 6 },
   links: { marginTop: 24, gap: 12, alignItems: 'center' },
-  link: { color: '#0EA5E9', fontWeight: '600' },
+  link: { color: palette.black, fontWeight: '600' },
 });

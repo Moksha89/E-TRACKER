@@ -13,6 +13,7 @@ import { Screen } from '@/components/Screen';
 import { useAppDispatch, useAppSelector } from '@/state/hooks';
 import { logout, setActiveBusiness } from '@/state/auth';
 import { setBiometricLock } from '@/state/settings';
+import { palette } from '@/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -95,13 +96,13 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
-        <Appbar.BackAction onPress={() => router.back()} color="#fff" />
-        <Appbar.Content title={t('settings.title')} color="#fff" />
+      <Appbar.Header style={styles.header}>
+        <Appbar.BackAction onPress={() => router.back()} color={palette.white} />
+        <Appbar.Content title={t('settings.title')} color={palette.white} />
       </Appbar.Header>
       <Screen padded={false}>
         <ScrollView contentContainerStyle={styles.container}>
-          <Card mode="elevated">
+          <Card mode="outlined" style={styles.card}>
             <Card.Content>
               <View style={styles.row}>
                 <Text variant="titleMedium" style={{ flex: 1 }}>
@@ -117,7 +118,7 @@ export default function SettingsScreen() {
             </Card.Content>
           </Card>
 
-          <Card mode="elevated">
+          <Card mode="outlined" style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium">{t('settings.backup')}</Text>
               <Button
@@ -161,7 +162,9 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { backgroundColor: palette.black },
   container: { padding: 16, gap: 16, paddingBottom: 32 },
+  card: { backgroundColor: palette.surface },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  muted: { color: '#64748B', marginTop: 8 },
+  muted: { color: palette.textMuted, marginTop: 8 },
 });

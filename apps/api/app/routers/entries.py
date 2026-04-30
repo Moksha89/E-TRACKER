@@ -151,6 +151,22 @@ def list_entries(
     )
 
 
+@router.get("/{entry_id}", response_model=EntryOut)
+def get_entry(
+    business_id: str,
+    book_id: str,
+    entry_id: str,
+    db: Session = Depends(get_session),
+    ctx: tuple[Business, BusinessMember] = Depends(require_business_access),
+) -> EntryOut:
+    business, _ = ctx
+    _book(db, business, book_id)
+    entry = db.get(Entry, entry_id)
+    if entry is None or entry.book_id != book_id or entry.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="entry not found")
+    return EntryOut.model_validate(entry)
+
+
 @router.patch("/{entry_id}", response_model=EntryOut)
 def update_entry(
     business_id: str,

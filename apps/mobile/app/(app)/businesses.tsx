@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Appbar, Button, FAB, List, Text } from 'react-native-paper';
+import { Appbar, Button, FAB, IconButton, List, Menu, Text } from 'react-native-paper';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { extractErrorMessage } from '@/api/client';
@@ -10,6 +10,7 @@ import { Empty } from '@/components/Empty';
 import { Screen } from '@/components/Screen';
 import { logout, setActiveBusiness } from '@/state/auth';
 import { useAppDispatch, useAppSelector } from '@/state/hooks';
+import { palette } from '@/theme';
 
 export default function BusinessesScreen() {
   const router = useRouter();
@@ -18,6 +19,8 @@ export default function BusinessesScreen() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [accountMenu, setAccountMenu] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,11 +42,9 @@ export default function BusinessesScreen() {
     load();
   }, [load]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  useFocusEffect(useCallback(() => {
+    load();
+  }, [load]));
 
   const select = (id: string) => {
     dispatch(setActiveBusiness(id));
@@ -52,9 +53,44 @@ export default function BusinessesScreen() {
 
   return (
     <>
-      <Appbar.Header style={{ backgroundColor: '#16A34A' }}>
-        <Appbar.Content title="Businesses" color="#fff" />
-        <Appbar.Action icon="logout" color="#fff" onPress={() => dispatch(logout())} />
+      <Appbar.Header style={styles.header}>
+        <Appbar.Content color={palette.white} title="E-Tracker" subtitle="Businesses" />
+        <Menu
+          visible={accountMenu}
+          onDismiss={() => setAccountMenu(false)}
+          anchor={
+            <Appbar.Action
+              icon="account-circle-outline"
+              color={palette.white}
+              onPress={() => setAccountMenu(true)}
+            />
+          }
+        >
+          <Menu.Item
+            title="Profile"
+            leadingIcon="account-outline"
+            onPress={() => {
+              setAccountMenu(false);
+              router.push('/(app)/profile');
+            }}
+          />
+          <Menu.Item
+            title="Settings"
+            leadingIcon="cog-outline"
+            onPress={() => {
+              setAccountMenu(false);
+              router.push('/(app)/settings');
+            }}
+          />
+          <Menu.Item
+            title="Logout"
+            leadingIcon="logout"
+            onPress={() => {
+              setAccountMenu(false);
+              dispatch(logout());
+            }}
+          />
+        </Menu>
       </Appbar.Header>
       <Screen padded={false}>
         {error ? (
@@ -71,6 +107,7 @@ export default function BusinessesScreen() {
           ListEmptyComponent={
             !loading ? (
               <Empty
+                icon="briefcase-outline"
                 title="No businesses yet"
                 subtitle="Create your first business to start tracking cash."
               />
@@ -81,9 +118,41 @@ export default function BusinessesScreen() {
               title={item.name}
               description={`${item.role ?? 'member'} · ${item.currency}`}
               left={(props) => <List.Icon {...props} icon="briefcase" />}
-              right={(props) =>
-                activeId === item.id ? <List.Icon {...props} icon="check-circle" /> : null
-              }
+              right={(props) => (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {activeId === item.id ? <List.Icon {...props} icon="check-circle" /> : null}
+                  <Menu
+                    visible={menuFor === item.id}
+                    onDismiss={() => setMenuFor(null)}
+                    anchor={
+                      <IconButton
+                        icon="dots-vertical"
+                        onPress={() => setMenuFor(item.id)}
+                      />
+                    }
+                  >
+                    <Menu.Item
+                      title="Edit"
+                      leadingIcon="pencil"
+                      onPress={() => {
+                        setMenuFor(null);
+                        router.push({
+                          pathname: '/(app)/businesses-edit',
+                          params: { businessId: item.id },
+                        });
+                      }}
+                    />
+                    <Menu.Item
+                      title="Open"
+                      leadingIcon="open-in-app"
+                      onPress={() => {
+                        setMenuFor(null);
+                        select(item.id);
+                      }}
+                    />
+                  </Menu>
+                </View>
+              )}
               onPress={() => select(item.id)}
             />
           )}
@@ -92,6 +161,7 @@ export default function BusinessesScreen() {
           icon="plus"
           style={styles.fab}
           onPress={() => router.push('/(app)/businesses-new')}
+          color={palette.white}
         />
       </Screen>
     </>
@@ -99,6 +169,12 @@ export default function BusinessesScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { backgroundColor: palette.black },
   error: { padding: 16, gap: 8 },
-  fab: { position: 'absolute', right: 16, bottom: 24 },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 24,
+    backgroundColor: palette.black,
+  },
 });
