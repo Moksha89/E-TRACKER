@@ -6,7 +6,6 @@
     "scheme": "cashbookclone",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "in.cashbookclone.app"
