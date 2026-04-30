@@ -19,6 +19,7 @@ from app.models import (
     Entry,
     EntryAttachment,
     MemberRole,
+    MemberStatus,
     User,
 )
 from app.push import notify_business_members
@@ -177,6 +178,7 @@ def download_attachment(
         select(BusinessMember).where(
             BusinessMember.business_id == book.business_id,
             BusinessMember.user_id == user.id,
+            BusinessMember.status == MemberStatus.ACTIVE,
         )
     )
     if membership is None:

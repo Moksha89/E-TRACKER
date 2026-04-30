@@ -280,7 +280,7 @@ export async function downloadExport(
 export interface Attachment {
   id: string;
   entry_id: string;
-  file_url: string;
+  download_url: string;
   original_filename: string | null;
   mime_type: string | null;
   size_bytes: number | null;

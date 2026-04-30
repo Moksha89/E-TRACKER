@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
 from app.models import BookType, EntryType, MemberRole, OtpChannel, OtpPurpose
 
@@ -303,11 +303,15 @@ class ReportSummary(BaseModel):
 class AttachmentOut(_ORM):
     id: str
     entry_id: str
-    file_url: str
     original_filename: str | None
     mime_type: str | None
     size_bytes: int | None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def download_url(self) -> str:
+        return f"/v1/attachments/{self.id}/download"
 
 
 # ---------- devices / push ----------
