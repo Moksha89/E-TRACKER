@@ -116,7 +116,7 @@ def test_attachment_upload_pushes_other_members(
 def test_role_change_notifies_member(
     client: TestClient, captured_pushes: list[dict[str, object]]
 ) -> None:
-    owner_h, partner_h, biz, _book = _setup_two_member_biz(client)
+    owner_h, _partner_h, biz, _book = _setup_two_member_biz(client)
     members = client.get(f"/v1/businesses/{biz['id']}/members", headers=owner_h).json()
     partner = next(m for m in members if m["role"] == "partner")
     captured_pushes.clear()
