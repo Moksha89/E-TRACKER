@@ -62,9 +62,7 @@ def test_ws_rejects_bad_token(client: TestClient) -> None:
     from starlette.websockets import WebSocketDisconnect
 
     try:
-        with client.websocket_connect(
-            f"/v1/ws?token=garbage&business_id={biz['id']}"
-        ):
+        with client.websocket_connect(f"/v1/ws?token=garbage&business_id={biz['id']}"):
             raise AssertionError("connection should have been rejected")
     except WebSocketDisconnect as exc:
         assert exc.code == 1008
