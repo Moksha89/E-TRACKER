@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>E-Tracker — Cash & Cashbook for Teams</title>
+    <meta name="description" content="E-Tracker: a multi-user cashbook app for businesses. Track cash in, cash out, and balances in real-time with your team." />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #000000;
+        --muted: #666666;
+        --line: #000000;
+        --surface: #fafafa;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      header {
+        padding: 24px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+      }
+      .brand .e {
+        background: var(--fg);
+        color: var(--bg);
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        text-align: center;
+        line-height: 30px;
+        margin-right: 8px;
+      }
+      nav a {
+        color: var(--fg);
+        margin-left: 24px;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      nav a:hover { text-decoration: underline; }
+      main { padding: 64px 32px; max-width: 1080px; margin: 0 auto; }
+      .hero h1 {
+        font-size: clamp(40px, 6vw, 72px);
+        line-height: 1.05;
+        margin: 0 0 24px;
+        letter-spacing: -0.03em;
+        font-weight: 800;
+      }
+      .hero p {
+        font-size: 20px;
+        max-width: 640px;
+        color: var(--muted);
+        margin: 0 0 40px;
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--fg);
+        color: var(--bg);
+        padding: 16px 28px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        border: 1px solid var(--fg);
+      }
+      .cta:hover { opacity: 0.85; }
+      .cta-secondary {
+        background: var(--bg);
+        color: var(--fg);
+        margin-left: 12px;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 14px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        margin-top: 96px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 28px;
+        background: var(--surface);
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .install {
+        margin-top: 96px;
+        padding: 40px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      .install h2 {
+        margin: 0 0 16px;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .install ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .install li {
+        margin-bottom: 10px;
+        color: var(--muted);
+      }
+      .install li b { color: var(--fg); }
+      footer {
+        border-top: 1px solid var(--line);
+        margin-top: 96px;
+        padding: 32px;
+        color: var(--muted);
+        font-size: 14px;
+        text-align: center;
+      }
+      footer a { color: var(--fg); }
+      code {
+        background: var(--surface);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand"><span class="e">E</span>-Tracker</div>
+      <nav>
+        <a href="/download/etracker.apk">Download</a>
+        <a href="/docs">API</a>
+        <a href="/healthz">Status</a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <h1>Cash &amp; cashbook<br />for real teams.</h1>
+        <p>
+          Multi-user cashbook with realtime sync, role-based access, attachments,
+          PDF/Excel exports, and Telegram-bound 2FA. Built for businesses that
+          actually have staff.
+        </p>
+        <a class="cta" href="/download/etracker.apk">
+          ↓ Download Android APK
+        </a>
+        <a class="cta cta-secondary" href="/docs">API Docs →</a>
+        <div class="meta">v0.2.0 · 67 MB · Android 6.0+ (sideload)</div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h3>Realtime sync</h3>
+          <p>WebSocket fanout — entries logged by your staff appear on the owner's screen in &lt;1s.</p>
+        </div>
+        <div class="card">
+          <h3>Role-based access</h3>
+          <p>Owner / partner / staff / viewer. Members invited by phone, gated by Telegram OTP.</p>
+        </div>
+        <div class="card">
+          <h3>Telegram 2FA</h3>
+          <p>Optional 2-factor for sensitive actions (delete business, change password). Codes via Telegram.</p>
+        </div>
+        <div class="card">
+          <h3>Attachments</h3>
+          <p>Attach receipts and invoices to any entry. Stored server-side, viewable in-app.</p>
+        </div>
+        <div class="card">
+          <h3>Reports &amp; exports</h3>
+          <p>CSV, Excel, and PDF export per business or per book. Copy to clipboard for quick sharing.</p>
+        </div>
+        <div class="card">
+          <h3>Backup &amp; restore</h3>
+          <p>Download a full JSON snapshot. Restore creates a fresh business from any backup.</p>
+        </div>
+      </section>
+
+      <section class="install">
+        <h2>Installing the APK</h2>
+        <ol>
+          <li><b>Download</b> the APK above to your Android phone.</li>
+          <li>Open <b>Files</b> → tap the <code>etracker.apk</code> you just downloaded.</li>
+          <li>If Android asks, allow <b>"Install unknown apps"</b> for the app you used to open the file.</li>
+          <li>Tap <b>Install</b>. Open E-Tracker and sign up with your phone number.</li>
+          <li>Enter the OTP delivered via Telegram (or <code>123456</code> in test mode) and you're in.</li>
+        </ol>
+      </section>
+    </main>
+    <footer>
+      &copy; E-Tracker · <a href="/docs">API</a> · <a href="/healthz">Status</a>
+    </footer>
+  </body>
+</html>
