@@ -49,9 +49,7 @@ class OtpDeliveryResult:
     detail: str | None = None
 
 
-def deliver_otp(
-    phone: str, code: str, telegram_user_id: str | None = None
-) -> OtpDeliveryResult:
+def deliver_otp(phone: str, code: str, telegram_user_id: str | None = None) -> OtpDeliveryResult:
     """Best-effort send the OTP via the configured Telegram channel.
 
     Returns the channel actually used. Falls back to dev-mode logging when no

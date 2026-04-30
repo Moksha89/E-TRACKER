@@ -61,9 +61,7 @@ def _consume_otp(db: Session, phone: str, purpose: OtpPurpose, code: str) -> Tel
 
 
 @router.post("/otp/request", response_model=OtpRequestResponse)
-def request_otp(
-    payload: OtpRequest, db: Session = Depends(get_session)
-) -> OtpRequestResponse:
+def request_otp(payload: OtpRequest, db: Session = Depends(get_session)) -> OtpRequestResponse:
     phone = _require_phone(payload.phone)
 
     existing = db.scalar(
@@ -80,11 +78,14 @@ def request_otp(
             )
 
     one_hour_ago = _now() - timedelta(hours=1)
-    recent_count = db.scalar(
-        select(func.count())
-        .select_from(TelegramOtp)
-        .where(TelegramOtp.phone == phone, TelegramOtp.sent_at >= one_hour_ago)
-    ) or 0
+    recent_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(TelegramOtp)
+            .where(TelegramOtp.phone == phone, TelegramOtp.sent_at >= one_hour_ago)
+        )
+        or 0
+    )
     if recent_count >= settings.otp_max_requests_per_hour:
         raise HTTPException(
             status_code=429,
@@ -96,9 +97,7 @@ def request_otp(
         raise HTTPException(status_code=404, detail="no account for this phone")
 
     code = generate_code()
-    delivery = deliver_otp(
-        phone, code, telegram_user_id=user.telegram_user_id if user else None
-    )
+    delivery = deliver_otp(phone, code, telegram_user_id=user.telegram_user_id if user else None)
     otp = TelegramOtp(
         phone=phone,
         purpose=payload.purpose,

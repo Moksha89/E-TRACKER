@@ -125,9 +125,7 @@ def update_book(
     if "opening_balance_cents" in fields:
         book.opening_balance_cents = fields["opening_balance_cents"]
     if "archived" in fields:
-        book.archived_at = (
-            datetime.now(UTC).replace(tzinfo=None) if fields["archived"] else None
-        )
+        book.archived_at = datetime.now(UTC).replace(tzinfo=None) if fields["archived"] else None
     db.commit()
     db.refresh(book)
     return BookOut.model_validate(book)
