@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     otp_resend_cooldown_seconds: int = 30
     otp_max_attempts: int = 5
     otp_max_requests_per_hour: int = 5
+    # If set, every requested OTP uses this fixed code and Telegram delivery is
+    # skipped. Intended for dev / staging only — DO NOT set in production once
+    # the app is publicly distributed.
+    otp_dev_fixed_code: str | None = None
 
     telegram_gateway_token: str | None = None
     telegram_gateway_base: str = "https://gatewayapi.telegram.org"

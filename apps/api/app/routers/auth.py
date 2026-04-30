@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.deps import get_session
-from app.models import OtpPurpose, TelegramOtp, User
-from app.otp import deliver_otp, generate_code, hash_code, verify_code
+from app.models import OtpChannel, OtpPurpose, TelegramOtp, User
+from app.otp import OtpDeliveryResult, deliver_otp, generate_code, hash_code, verify_code
 from app.phone import normalize_phone
 from app.schemas import (
     LoginRequest,
@@ -96,8 +96,19 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_session)) -> OtpR
     if payload.purpose in {OtpPurpose.LOGIN, OtpPurpose.RESET_PASSWORD} and user is None:
         raise HTTPException(status_code=404, detail="no account for this phone")
 
-    code = generate_code()
-    delivery = deliver_otp(phone, code, telegram_user_id=user.telegram_user_id if user else None)
+    if settings.otp_dev_fixed_code:
+        code = settings.otp_dev_fixed_code
+        delivery = OtpDeliveryResult(
+            channel=OtpChannel.TELEGRAM_GATEWAY,
+            request_id=None,
+            delivered=False,
+            detail="dev-fixed-code: telegram skipped",
+        )
+    else:
+        code = generate_code()
+        delivery = deliver_otp(
+            phone, code, telegram_user_id=user.telegram_user_id if user else None
+        )
     otp = TelegramOtp(
         phone=phone,
         purpose=payload.purpose,
