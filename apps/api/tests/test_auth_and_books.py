@@ -2,17 +2,9 @@ from fastapi.testclient import TestClient
 
 
 def _signup_and_login(client: TestClient, phone: str = "+919000000001") -> str:
-    otp_resp = client.post(
-        "/v1/auth/otp/request",
-        json={"phone": phone, "purpose": "signup"},
-    )
-    assert otp_resp.status_code == 200, otp_resp.text
-    code = otp_resp.json()["debug_code"]
-    assert code
-
     signup_resp = client.post(
         "/v1/auth/signup",
-        json={"phone": phone, "password": "secret123", "name": "Tester", "otp": code},
+        json={"phone": phone, "pin": "654321", "name": "Tester"},
     )
     assert signup_resp.status_code == 200, signup_resp.text
     token: str = signup_resp.json()["access_token"]
@@ -86,6 +78,20 @@ def test_invalid_login(client: TestClient) -> None:
     _signup_and_login(client, phone="+919000000002")
     bad = client.post(
         "/v1/auth/login",
-        json={"phone": "+919000000002", "password": "wrong"},
+        json={"phone": "+919000000002", "pin": "111111"},
     )
     assert bad.status_code == 401
+
+
+def test_pin_format_rejected(client: TestClient) -> None:
+    bad = client.post(
+        "/v1/auth/signup",
+        json={"phone": "+919000000003", "pin": "abc123", "name": "T"},
+    )
+    assert bad.status_code == 422
+
+    short = client.post(
+        "/v1/auth/signup",
+        json={"phone": "+919000000003", "pin": "12345", "name": "T"},
+    )
+    assert short.status_code == 422

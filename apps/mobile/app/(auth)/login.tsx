@@ -15,8 +15,8 @@ export default function LoginScreen() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,13 +27,13 @@ export default function LoginScreen() {
       setError('Enter a valid phone number');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!/^\d{6}$/.test(pin)) {
+      setError('PIN must be exactly 6 digits');
       return;
     }
     setSubmitting(true);
     try {
-      const resp = await login(normalized, password);
+      const resp = await login(normalized, pin);
       dispatch(setSession({ token: resp.access_token, user: resp.user }));
       router.replace('/(app)/businesses');
     } catch (e) {
@@ -49,7 +49,7 @@ export default function LoginScreen() {
         Welcome back
       </Text>
       <Text variant="bodyMedium" style={styles.subtitle}>
-        Sign in with your mobile number and password.
+        Sign in with your mobile number and 6-digit PIN.
       </Text>
 
       <TextInput
@@ -62,14 +62,16 @@ export default function LoginScreen() {
         mode="outlined"
       />
       <TextInput
-        label="Password"
-        secureTextEntry={!showPassword}
-        value={password}
-        onChangeText={setPassword}
+        label="6-digit PIN"
+        keyboardType="number-pad"
+        secureTextEntry={!showPin}
+        maxLength={6}
+        value={pin}
+        onChangeText={(v) => setPin(v.replace(/\D/g, ''))}
         right={
           <TextInput.Icon
-            icon={showPassword ? 'eye-off' : 'eye'}
-            onPress={() => setShowPassword((v) => !v)}
+            icon={showPin ? 'eye-off' : 'eye'}
+            onPress={() => setShowPin((v) => !v)}
           />
         }
         style={styles.input}
@@ -91,9 +93,6 @@ export default function LoginScreen() {
       </Button>
 
       <View style={styles.links}>
-        <Link href="/(auth)/forgot" style={styles.link}>
-          Forgot password?
-        </Link>
         <Link href="/(auth)/signup" style={styles.link}>
           Create an account
         </Link>

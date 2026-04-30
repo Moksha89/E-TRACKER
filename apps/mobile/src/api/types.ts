@@ -1,5 +1,3 @@
-export type OtpPurpose = 'signup' | 'login' | 'reset_password' | 'sensitive';
-export type OtpChannel = 'telegram_gateway' | 'telegram_bot';
 export type EntryType = 'in' | 'out';
 export type BookType = 'cashbook' | 'generic';
 export type MemberRole = 'owner' | 'partner' | 'staff' | 'viewer';
@@ -11,22 +9,12 @@ export interface User {
   email: string | null;
   phone_verified: boolean;
   default_business_id: string | null;
-  two_factor_enabled?: boolean;
 }
 
 export interface AuthResponse {
   access_token: string;
   token_type: 'bearer';
   user: User;
-}
-
-export interface OtpResponse {
-  channel: OtpChannel;
-  request_id: string | null;
-  delivered: boolean;
-  cooldown_seconds: number;
-  expires_in_seconds: number;
-  debug_code: string | null;
 }
 
 export interface Business {

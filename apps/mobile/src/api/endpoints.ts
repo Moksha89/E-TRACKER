@@ -11,8 +11,6 @@ import type {
   ExportFormat,
   Member,
   MemberRole,
-  OtpPurpose,
-  OtpResponse,
   Party,
   PaymentMode,
   PendingInvite,
@@ -22,36 +20,18 @@ import type {
 
 // auth -----
 
-export async function requestOtp(phone: string, purpose: OtpPurpose): Promise<OtpResponse> {
-  const { data } = await getClient().post<OtpResponse>('/v1/auth/otp/request', {
-    phone,
-    purpose,
-  });
-  return data;
-}
-
 export async function signup(input: {
   phone: string;
-  password: string;
+  pin: string;
   name?: string;
   email?: string;
-  otp: string;
 }): Promise<AuthResponse> {
   const { data } = await getClient().post<AuthResponse>('/v1/auth/signup', input);
   return data;
 }
 
-export async function login(phone: string, password: string): Promise<AuthResponse> {
-  const { data } = await getClient().post<AuthResponse>('/v1/auth/login', { phone, password });
-  return data;
-}
-
-export async function resetPassword(input: {
-  phone: string;
-  otp: string;
-  new_password: string;
-}): Promise<AuthResponse> {
-  const { data } = await getClient().post<AuthResponse>('/v1/auth/password/reset', input);
+export async function login(phone: string, pin: string): Promise<AuthResponse> {
+  const { data } = await getClient().post<AuthResponse>('/v1/auth/login', { phone, pin });
   return data;
 }
 
@@ -69,25 +49,11 @@ export async function updateMe(input: {
   return data;
 }
 
-export async function changePassword(input: {
-  current_password: string;
-  new_password: string;
-  otp?: string;
+export async function changePin(input: {
+  current_pin: string;
+  new_pin: string;
 }): Promise<void> {
-  await getClient().post('/v1/me/password', input);
-}
-
-export async function getTwoFactorStatus(): Promise<{ enabled: boolean }> {
-  const { data } = await getClient().get<{ enabled: boolean }>('/v1/me/2fa');
-  return data;
-}
-
-export async function setTwoFactor(enabled: boolean, otp: string): Promise<{ enabled: boolean }> {
-  const { data } = await getClient().post<{ enabled: boolean }>('/v1/me/2fa', {
-    enabled,
-    otp,
-  });
-  return data;
+  await getClient().post('/v1/me/pin', input);
 }
 
 // businesses -----
@@ -120,9 +86,8 @@ export async function updateBusiness(
   return data;
 }
 
-export async function deleteBusiness(businessId: string, otp?: string): Promise<void> {
-  const qs = otp ? `?otp=${encodeURIComponent(otp)}` : '';
-  await getClient().delete(`/v1/businesses/${businessId}${qs}`);
+export async function deleteBusiness(businessId: string): Promise<void> {
+  await getClient().delete(`/v1/businesses/${businessId}`);
 }
 
 // books -----

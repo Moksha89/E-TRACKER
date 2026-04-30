@@ -84,8 +84,8 @@ def invite_member(
 
     target = db.scalar(select(User).where(User.phone == phone))
     if target is None:
-        # Pre-create a user with a random password hash; they'll set their real
-        # password on first login (via OTP -> reset flow).
+        # Pre-create a placeholder User; the invitee will set their PIN by
+        # signing up with the same phone (the row is upgraded in-place).
         import secrets
 
         random_pw = secrets.token_urlsafe(24)
