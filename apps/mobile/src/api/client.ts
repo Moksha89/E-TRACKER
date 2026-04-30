@@ -43,6 +43,28 @@ export function configureClient(store: Store<RootState>): AxiosInstance {
   return client;
 }
 
+// Lightweight in-flight GET request dedup. Multiple components calling the
+// same `useFocusEffect` simultaneously would otherwise issue duplicate
+// concurrent network requests. Keyed by full URL + serialized params.
+const _inflight = new Map<string, Promise<unknown>>();
+
+export function dedupedGet<T>(
+  url: string,
+  params?: Record<string, unknown>,
+): Promise<T> {
+  const key = `${url}::${params ? JSON.stringify(params) : ''}`;
+  const existing = _inflight.get(key);
+  if (existing) return existing as Promise<T>;
+  const p = getClient()
+    .get<T>(url, { params })
+    .then((r) => r.data)
+    .finally(() => {
+      _inflight.delete(key);
+    });
+  _inflight.set(key, p);
+  return p;
+}
+
 export function getClient(): AxiosInstance {
   if (!_client) {
     throw new Error('axios client not configured; call configureClient(store) first');
