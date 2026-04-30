@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import Base, engine
+from app.realtime import set_main_loop
 from app.routers import (
     attachments,
     auth,
@@ -19,6 +21,7 @@ from app.routers import (
     me,
     members,
     reports,
+    ws,
 )
 
 settings = get_settings()
@@ -29,6 +32,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Auto-create tables on first boot when no Alembic history exists. In
     # production we use `alembic upgrade head` instead.
     Base.metadata.create_all(bind=engine)
+    set_main_loop(asyncio.get_running_loop())
     yield
 
 
@@ -66,3 +70,4 @@ app.include_router(attachments.download_router)
 app.include_router(backup.router)
 app.include_router(backup.restore_router)
 app.include_router(devices.router)
+app.include_router(ws.router)

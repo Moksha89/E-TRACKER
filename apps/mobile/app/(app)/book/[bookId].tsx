@@ -12,6 +12,7 @@ import {
   listEntries,
   listPaymentModes,
 } from '@/api/endpoints';
+import { useRealtime } from '@/api/realtime';
 import type { BookWithBalance, Category, Entry, PaymentMode } from '@/api/types';
 import { Empty } from '@/components/Empty';
 import { EntryFiltersSheet, countActiveFilters } from '@/components/EntryFiltersSheet';
@@ -25,6 +26,7 @@ export default function BookDetailScreen() {
   const params = useLocalSearchParams<{ bookId: string }>();
   const bookId = params.bookId;
   const businessId = useAppSelector((s) => s.auth.activeBusinessId);
+  const accessToken = useAppSelector((s) => s.auth.accessToken);
   const { t } = useTranslation();
   const [book, setBook] = useState<BookWithBalance | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -73,6 +75,24 @@ export default function BookDetailScreen() {
       loadLookups();
     }, [load, loadLookups]),
   );
+
+  useRealtime({
+    enabled: true,
+    businessId,
+    token: accessToken,
+    onEvent: (e) => {
+      if (
+        e.type === 'entry.created' ||
+        e.type === 'entry.updated' ||
+        e.type === 'entry.deleted'
+      ) {
+        const data = (e as { data?: { book_id?: string } }).data ?? {};
+        if (!data.book_id || data.book_id === bookId) {
+          load();
+        }
+      }
+    },
+  });
 
   const activeCount = countActiveFilters(filter);
 
