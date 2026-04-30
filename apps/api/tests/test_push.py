@@ -9,12 +9,9 @@ import app.routers.members as members_mod
 
 
 def _signup(client: TestClient, phone: str) -> dict[str, str]:
-    otp = client.post("/v1/auth/otp/request", json={"phone": phone, "purpose": "signup"}).json()[
-        "debug_code"
-    ]
     resp = client.post(
         "/v1/auth/signup",
-        json={"phone": phone, "password": "secret123", "name": phone, "otp": otp},
+        json={"phone": phone, "pin": "123456", "name": phone},
     )
     assert resp.status_code == 200, resp.text
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
@@ -59,17 +56,8 @@ def test_entry_creation_pushes_to_other_members(
     # Expect a push for the invite (no devices yet, so tokens=[]; still recorded).
     assert any(p["title"].startswith("Invited to") for p in captured_pushes)
 
-    # Partner claims account: request OTP for password reset, then reset.
-    partner_otp = client.post(
-        "/v1/auth/otp/request",
-        json={"phone": partner_phone, "purpose": "reset_password"},
-    ).json()["debug_code"]
-    reset = client.post(
-        "/v1/auth/password/reset",
-        json={"phone": partner_phone, "otp": partner_otp, "new_password": "secret123"},
-    )
-    assert reset.status_code == 200, reset.text
-    partner_h = {"Authorization": f"Bearer {reset.json()['access_token']}"}
+    # Partner claims their account by signing up with their own PIN.
+    partner_h = _signup(client, partner_phone)
     accept = client.post(f"/v1/businesses/{biz['id']}/members/accept", headers=partner_h)
     assert accept.status_code == 200, accept.text
 

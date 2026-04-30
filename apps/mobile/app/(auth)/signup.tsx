@@ -4,7 +4,7 @@ import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 
 import { extractErrorMessage } from '@/api/client';
-import { requestOtp, signup } from '@/api/endpoints';
+import { signup } from '@/api/endpoints';
 import { Screen } from '@/components/Screen';
 import { setSession } from '@/state/auth';
 import { useAppDispatch } from '@/state/hooks';
@@ -16,57 +16,33 @@ export default function SignupScreen() {
 
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [debugCode, setDebugCode] = useState<string | null>(null);
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const phoneE164 = normalizePhoneInput(phone);
-
-  const sendOtp = async () => {
+  const submit = async () => {
     setError(null);
-    setInfo(null);
+    const phoneE164 = normalizePhoneInput(phone);
     if (!isLikelyValidPhone(phoneE164)) {
       setError('Enter a valid phone number');
       return;
     }
-    setBusy(true);
-    try {
-      const resp = await requestOtp(phoneE164, 'signup');
-      setOtpSent(true);
-      setDebugCode(resp.debug_code);
-      setInfo(
-        resp.delivered
-          ? `OTP sent via Telegram. Expires in ${Math.round(resp.expires_in_seconds / 60)} min.`
-          : 'OTP generated locally (dev mode).',
-      );
-    } catch (e) {
-      setError(extractErrorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submit = async () => {
-    setError(null);
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!/^\d{6}$/.test(pin)) {
+      setError('PIN must be exactly 6 digits');
       return;
     }
-    if (otp.length < 4) {
-      setError('Enter the OTP you received');
+    if (pin !== confirmPin) {
+      setError('PINs do not match');
       return;
     }
     setBusy(true);
     try {
       const resp = await signup({
         phone: phoneE164,
-        password,
+        pin,
         name: name.trim() || undefined,
-        otp,
       });
       dispatch(setSession({ token: resp.access_token, user: resp.user }));
       router.replace('/(app)/businesses');
@@ -83,7 +59,8 @@ export default function SignupScreen() {
         Create your account
       </Text>
       <Text variant="bodyMedium" style={styles.subtitle}>
-        We'll send a verification code over Telegram.
+        Sign up with your mobile number and a 6-digit PIN. Remember it — there
+        is no password reset.
       </Text>
 
       <TextInput
@@ -93,7 +70,6 @@ export default function SignupScreen() {
         keyboardType="phone-pad"
         mode="outlined"
         style={styles.input}
-        disabled={otpSent}
       />
       <TextInput
         label="Your name (optional)"
@@ -103,47 +79,39 @@ export default function SignupScreen() {
         style={styles.input}
       />
       <TextInput
-        label="Password (min 6 chars)"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
+        label="6-digit PIN"
+        value={pin}
+        onChangeText={(v) => setPin(v.replace(/\D/g, ''))}
+        keyboardType="number-pad"
+        secureTextEntry={!showPin}
+        maxLength={6}
+        mode="outlined"
+        style={styles.input}
+        right={
+          <TextInput.Icon
+            icon={showPin ? 'eye-off' : 'eye'}
+            onPress={() => setShowPin((v) => !v)}
+          />
+        }
+      />
+      <TextInput
+        label="Confirm PIN"
+        value={confirmPin}
+        onChangeText={(v) => setConfirmPin(v.replace(/\D/g, ''))}
+        keyboardType="number-pad"
+        secureTextEntry={!showPin}
+        maxLength={6}
         mode="outlined"
         style={styles.input}
       />
 
-      {otpSent ? (
-        <TextInput
-          label={debugCode ? `OTP (dev: ${debugCode})` : 'OTP'}
-          value={otp}
-          onChangeText={setOtp}
-          keyboardType="number-pad"
-          mode="outlined"
-          style={styles.input}
-          maxLength={6}
-        />
-      ) : null}
-
       <HelperText type="error" visible={!!error}>
         {error ?? ' '}
       </HelperText>
-      <HelperText type="info" visible={!!info}>
-        {info ?? ' '}
-      </HelperText>
 
-      {!otpSent ? (
-        <Button mode="contained" onPress={sendOtp} loading={busy} disabled={busy}>
-          Send OTP
-        </Button>
-      ) : (
-        <>
-          <Button mode="contained" onPress={submit} loading={busy} disabled={busy}>
-            Create account
-          </Button>
-          <Button onPress={sendOtp} disabled={busy} style={styles.resend}>
-            Resend OTP
-          </Button>
-        </>
-      )}
+      <Button mode="contained" onPress={submit} loading={busy} disabled={busy}>
+        Create account
+      </Button>
     </Screen>
   );
 }
@@ -152,5 +120,4 @@ const styles = StyleSheet.create({
   title: { marginBottom: 4 },
   subtitle: { opacity: 0.7, marginBottom: 24 },
   input: { marginBottom: 12 },
-  resend: { marginTop: 8 },
 });

@@ -12,27 +12,17 @@ import app.routers.members as members_mod
 
 
 def _signup(client: TestClient, phone: str) -> dict[str, str]:
-    otp = client.post("/v1/auth/otp/request", json={"phone": phone, "purpose": "signup"}).json()[
-        "debug_code"
-    ]
     resp = client.post(
         "/v1/auth/signup",
-        json={"phone": phone, "password": "secret123", "name": phone, "otp": otp},
+        json={"phone": phone, "pin": "123456", "name": phone},
     )
     assert resp.status_code == 200, resp.text
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
 def _claim(client: TestClient, phone: str) -> dict[str, str]:
-    otp = client.post(
-        "/v1/auth/otp/request", json={"phone": phone, "purpose": "reset_password"}
-    ).json()["debug_code"]
-    resp = client.post(
-        "/v1/auth/password/reset",
-        json={"phone": phone, "otp": otp, "new_password": "secret123"},
-    )
-    assert resp.status_code == 200, resp.text
-    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    # Invited members "claim" by signing up with a chosen PIN. No OTP needed.
+    return _signup(client, phone)
 
 
 @pytest.fixture

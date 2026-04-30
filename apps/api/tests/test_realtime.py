@@ -4,16 +4,9 @@ from fastapi.testclient import TestClient
 
 
 def _signup(client: TestClient, phone: str = "+919000099001") -> tuple[str, str]:
-    otp = client.post("/v1/auth/otp/request", json={"phone": phone, "purpose": "signup"})
-    code = otp.json()["debug_code"]
     r = client.post(
         "/v1/auth/signup",
-        json={
-            "phone": phone,
-            "password": "secretpass123",
-            "name": "WS Tester",
-            "otp": code,
-        },
+        json={"phone": phone, "pin": "123456", "name": "WS Tester"},
     )
     assert r.status_code == 200, r.text
     return r.json()["access_token"], r.json()["user"]["id"]

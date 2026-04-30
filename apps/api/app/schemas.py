@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
-from app.models import BookType, EntryType, MemberRole, OtpChannel, OtpPurpose
+from app.models import BookType, EntryType, MemberRole
 
 
 class _ORM(BaseModel):
@@ -13,44 +13,30 @@ class _ORM(BaseModel):
 
 # ---------- auth ----------
 
+# Authentication is phone + 6-digit numeric PIN. There is no OTP: users type
+# their PIN to sign up and to log in. PINs are stored as bcrypt hashes
+# (`User.password_hash`) — the column kept its legacy name for migration
+# safety.
 
-class OtpRequest(BaseModel):
-    phone: str
-    purpose: OtpPurpose
-
-
-class OtpRequestResponse(BaseModel):
-    channel: OtpChannel
-    request_id: str | None = None
-    delivered: bool
-    cooldown_seconds: int
-    expires_in_seconds: int
-    debug_code: str | None = None
+PIN_PATTERN = r"^\d{6}$"
 
 
 class SignupRequest(BaseModel):
     phone: str
-    password: str = Field(min_length=6, max_length=128)
+    pin: str = Field(pattern=PIN_PATTERN)
     name: str | None = None
     email: EmailStr | None = None
-    otp: str = Field(min_length=4, max_length=8)
 
 
 class LoginRequest(BaseModel):
     phone: str
-    password: str
+    pin: str = Field(pattern=PIN_PATTERN)
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
-
-
-class ResetPasswordRequest(BaseModel):
-    phone: str
-    otp: str
-    new_password: str = Field(min_length=6, max_length=128)
 
 
 class UserOut(_ORM):
@@ -60,7 +46,6 @@ class UserOut(_ORM):
     email: str | None
     phone_verified: bool
     default_business_id: str | None
-    two_factor_enabled: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -69,19 +54,9 @@ class UserUpdate(BaseModel):
     default_business_id: str | None = None
 
 
-class PasswordChangeRequest(BaseModel):
-    current_password: str = Field(min_length=1, max_length=128)
-    new_password: str = Field(min_length=6, max_length=128)
-    otp: str | None = None  # required when two_factor_enabled is True
-
-
-class TwoFactorStatus(BaseModel):
-    enabled: bool
-
-
-class TwoFactorToggleRequest(BaseModel):
-    enabled: bool
-    otp: str = Field(min_length=4, max_length=8)
+class PinChangeRequest(BaseModel):
+    current_pin: str = Field(pattern=PIN_PATTERN)
+    new_pin: str = Field(pattern=PIN_PATTERN)
 
 
 # ---------- business ----------

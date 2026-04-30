@@ -3,21 +3,10 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 
-def _request_otp_code(client: TestClient, phone: str, purpose: str = "signup") -> str:
-    resp = client.post(
-        "/v1/auth/otp/request",
-        json={"phone": phone, "purpose": purpose},
-    )
-    assert resp.status_code == 200, resp.text
-    code: str = resp.json()["debug_code"]
-    return code
-
-
 def _signup(client: TestClient, phone: str, name: str = "User") -> str:
-    code = _request_otp_code(client, phone)
     resp = client.post(
         "/v1/auth/signup",
-        json={"phone": phone, "password": "secret123", "name": name, "otp": code},
+        json={"phone": phone, "pin": "123456", "name": name},
     )
     assert resp.status_code == 200, resp.text
     token: str = resp.json()["access_token"]
@@ -105,15 +94,9 @@ def test_invite_accept_and_role_changes(client: TestClient) -> None:
     roles = {m["role"] for m in members}
     assert roles == {"owner", "staff"}
 
-    # The invitee cannot create a User via signup with the same phone (it
-    # already exists), so they "claim" the account via reset_password.
-    reset_code = _request_otp_code(client, invitee_phone, "reset_password")
-    reset_resp = client.post(
-        "/v1/auth/password/reset",
-        json={"phone": invitee_phone, "otp": reset_code, "new_password": "helper123"},
-    )
-    assert reset_resp.status_code == 200, reset_resp.text
-    invitee_token = reset_resp.json()["access_token"]
+    # The invitee "claims" their account by signing up with their own PIN.
+    # The pre-created User row (phone_verified=False) is upgraded in place.
+    invitee_token = _signup(client, invitee_phone, name="Helper")
     h_invitee = {"Authorization": f"Bearer {invitee_token}"}
 
     # Invitee accepts the invite.
