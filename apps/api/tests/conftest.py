@@ -1,5 +1,11 @@
+import os
 from collections.abc import Iterator
 from pathlib import Path
+
+# Settings are read at import time. Disable rate limiting and prefer plain
+# text logs for the test process before importing the app.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("LOG_FORMAT", "text")
 
 import pytest
 from fastapi.testclient import TestClient
