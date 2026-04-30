@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Cashbook Clone",
+    "slug": "cashbook-clone",
+    "version": "0.1.0",
+    "scheme": "cashbookclone",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.cashbookclone.app"
+    },
+    "android": {
+      "package": "in.cashbookclone.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000"
+    }
+  }
+}
