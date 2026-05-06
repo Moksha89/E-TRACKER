@@ -19,6 +19,11 @@
     "android": {
       "package": "com.sve.expenses",
       "icon": "./assets/icon.png",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -32,6 +37,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to take photos of receipts.",
+          "photosPermission": "Allow $(PRODUCT_NAME) to attach photos to entries."
+        }
+      ],
       [
         "expo-build-properties",
         {

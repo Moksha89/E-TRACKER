@@ -1,6 +1,5 @@
 import 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
@@ -9,6 +8,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 import { configureClient } from '@/api/client';
+import { BrandedSplash } from '@/components/BrandedSplash';
 import '@/i18n';
 import type { RootState } from '@/state/store';
 import { persistor, store } from '@/state/store';
@@ -41,11 +41,7 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
   }, [enabled, token]);
 
   if (!unlocked) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
+    return <BrandedSplash label="Tap to unlock" />;
   }
   return <>{children}</>;
 }
@@ -59,17 +55,13 @@ export default function RootLayout() {
   }, []);
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
+    return <BrandedSplash label="Loading…" />;
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
-        <PersistGate loading={null} persistor={persistor}>
+        <PersistGate loading={<BrandedSplash label="Restoring session…" />} persistor={persistor}>
           <BiometricGate>
             <PaperProvider theme={theme}>
               <Stack screenOptions={{ headerShown: false }} />
