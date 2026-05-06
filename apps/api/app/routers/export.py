@@ -304,11 +304,7 @@ def _txt_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
         ts = it.occurred_at.strftime("%Y-%m-%d %H:%M")
         sign = "+" if it.type == EntryType.IN.value else "-"
         amt = _money(it.amount_cents, book.currency)
-        meta = " | ".join(
-            x
-            for x in [it.category, it.payment_mode, it.party, it.description]
-            if x
-        )
+        meta = " | ".join(x for x in [it.category, it.payment_mode, it.party, it.description] if x)
         by = f" by {it.created_by}" if it.created_by else ""
         logged = it.created_at.strftime("%Y-%m-%d %H:%M:%S")
         lines.append(f"[{ts}] {sign}{amt}  {meta}{by}  (logged {logged})")
