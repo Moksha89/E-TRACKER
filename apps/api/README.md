@@ -1,6 +1,6 @@
 # etracker-api
 
-FastAPI backend for E-Tracker.
+FastAPI backend for SVE Expenses.
 
 ## Requirements
 

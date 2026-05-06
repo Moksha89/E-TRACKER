@@ -54,7 +54,7 @@ export default function BusinessesScreen() {
   return (
     <>
       <Appbar.Header style={styles.header}>
-        <Appbar.Content color={palette.white} title="E-Tracker" subtitle="Businesses" />
+        <Appbar.Content color={palette.white} title="SVE Expenses" subtitle="Businesses" />
         <Menu
           visible={accountMenu}
           onDismiss={() => setAccountMenu(false)}

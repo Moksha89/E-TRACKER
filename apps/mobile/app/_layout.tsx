@@ -33,7 +33,7 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
         return;
       }
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock E-Tracker',
+        promptMessage: 'Unlock SVE Expenses',
         disableDeviceFallback: false,
       });
       setUnlocked(result.success);

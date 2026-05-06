@@ -90,7 +90,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 observability.configure()
 
-app = FastAPI(title="E-Tracker API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="SVE Expenses API", version="0.1.0", lifespan=lifespan)
 limits.attach(app)
 
 _origins = settings.cors_origin_list
