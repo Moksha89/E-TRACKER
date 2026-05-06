@@ -1,17 +1,17 @@
-# E-Tracker
+# SVE Expenses
 
-A cash-book / ledger app — multi-business, multi-book cash in/out tracking with members, reports, attachments, and offline-first sync. Modeled on the CashBook (cashbook.in) UX.
+A cash-book / ledger app — multi-business, multi-book cash in/out tracking with members, reports, attachments, and offline-first sync.
 
 ## Architecture
 
 - **`apps/mobile`** — Expo + React Native + TypeScript. Redux Toolkit, React Navigation 6, React Native Paper. Mirrors the screens/UX of the original.
-- **`apps/api`** — FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL. JWT auth, Telegram Gateway OTP for signup / forgot-password / sensitive actions. Deployed to Fly.io.
+- **`apps/api`** — FastAPI + SQLAlchemy 2 + SQLite (Postgres-ready). JWT auth.
 
 ## Auth model
 
-- Phone number + password (bcrypt) is the primary credential.
-- Telegram-based OTP verifies the phone at signup and gates password reset / sensitive actions.
-- No Google / Apple sign-in. No UPI / wallet / fintech surface.
+- Phone number + 6-digit numeric PIN. PIN is bcrypt-hashed.
+- No OTP, no Telegram, no email, no 2FA.
+- Invited members claim their account by signing up with the same phone.
 
 ## Roadmap
 

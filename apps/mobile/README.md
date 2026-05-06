@@ -1,6 +1,6 @@
 # etracker-mobile
 
-Expo + React Native + TypeScript app for E-Tracker.
+Expo + React Native + TypeScript app for SVE Expenses.
 
 ## Setup
 
