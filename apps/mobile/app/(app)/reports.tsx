@@ -330,6 +330,15 @@ export default function ReportsScreen() {
                       PDF
                     </Button>
                     <Button
+                      mode="outlined"
+                      icon="format-text"
+                      onPress={() => onExport('txt')}
+                      loading={exporting}
+                      disabled={exporting || scope !== 'book' || !bookId}
+                    >
+                      Text
+                    </Button>
+                    <Button
                       mode="contained"
                       icon="content-copy"
                       onPress={onCopyCsv}

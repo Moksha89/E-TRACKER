@@ -150,4 +150,4 @@ export interface ReportSummary {
   by_party: PartyBreakdown[];
 }
 
-export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf' | 'txt';

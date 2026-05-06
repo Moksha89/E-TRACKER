@@ -4,7 +4,9 @@ import {
   Appbar,
   Button,
   Chip,
+  Dialog,
   HelperText,
+  Portal,
   SegmentedButtons,
   Text,
   TextInput,
@@ -16,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { extractErrorMessage } from '@/api/client';
 import {
+  createCategory,
   createEntry,
   listCategories,
   listPaymentModes,
@@ -46,8 +49,11 @@ export default function NewEntryScreen() {
   const [attachment, setAttachment] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [newCategoryOpen, setNewCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
-  const pickAttachment = async () => {
+  const pickFromGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       setError('Photo library permission is required to attach a receipt.');
@@ -59,6 +65,38 @@ export default function NewEntryScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       setAttachment(result.assets[0]);
+    }
+  };
+
+  const captureFromCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setError('Camera permission is required to take a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAttachment(result.assets[0]);
+    }
+  };
+
+  const submitNewCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name || !businessId) return;
+    setCreatingCategory(true);
+    try {
+      const created = await createCategory(businessId, { name });
+      setCategories((prev) => [...prev, created]);
+      setCategoryId(created.id);
+      setNewCategoryOpen(false);
+      setNewCategoryName('');
+    } catch (e) {
+      setError(extractErrorMessage(e));
+    } finally {
+      setCreatingCategory(false);
     }
   };
 
@@ -199,6 +237,14 @@ export default function NewEntryScreen() {
               {c.name}
             </Button>
           ))}
+          <Button
+            mode="outlined"
+            icon="plus"
+            onPress={() => setNewCategoryOpen(true)}
+            compact
+          >
+            Other / new
+          </Button>
         </View>
 
         <Text variant="labelLarge" style={styles.section}>
@@ -221,8 +267,11 @@ export default function NewEntryScreen() {
           Attachment
         </Text>
         <View style={styles.attachmentRow}>
-          <Button mode="outlined" icon="paperclip" onPress={pickAttachment}>
-            {attachment ? 'Replace' : 'Attach receipt'}
+          <Button mode="outlined" icon="camera" onPress={captureFromCamera}>
+            {attachment ? 'Retake' : 'Take photo'}
+          </Button>
+          <Button mode="outlined" icon="image" onPress={pickFromGallery}>
+            {attachment ? 'Replace' : 'Gallery'}
           </Button>
           {attachment ? (
             <>
@@ -253,6 +302,30 @@ export default function NewEntryScreen() {
           Save entry
         </Button>
       </Screen>
+      <Portal>
+        <Dialog visible={newCategoryOpen} onDismiss={() => setNewCategoryOpen(false)}>
+          <Dialog.Title>New category</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="Category name"
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              mode="outlined"
+              autoFocus
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setNewCategoryOpen(false)}>Cancel</Button>
+            <Button
+              onPress={submitNewCategory}
+              loading={creatingCategory}
+              disabled={creatingCategory || !newCategoryName.trim()}
+            >
+              Create
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </>
   );
 }

@@ -1,10 +1,15 @@
 import { memo, useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Share, StyleSheet, View } from 'react-native';
-import { Appbar, Badge, Card, Chip, FAB, Text, TouchableRipple } from 'react-native-paper';
+import { ActivityIndicator, Alert, FlatList, Share, StyleSheet, View } from 'react-native';
+import { Appbar, Badge, Card, Chip, FAB, Menu, Text, TouchableRipple } from 'react-native-paper';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 import { extractErrorMessage } from '@/api/client';
+import { downloadExport } from '@/api/endpoints';
+import type { ExportFormat } from '@/api/types';
 import type { EntryFilter } from '@/api/endpoints';
 import {
   getBook,
@@ -38,6 +43,8 @@ export default function BookDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<EntryFilter>({});
   const [filterOpen, setFilterOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
 
@@ -129,6 +136,57 @@ export default function BookDetailScreen() {
 
   const currency = book?.currency ?? 'INR';
 
+  const onDownload = useCallback(
+    async (fmt: ExportFormat | 'copy') => {
+      setDownloadOpen(false);
+      if (!businessId || !bookId) return;
+      setDownloading(true);
+      try {
+        const realFmt: ExportFormat = fmt === 'copy' ? 'txt' : fmt;
+        const { blob, filename } = await downloadExport(
+          businessId,
+          String(bookId),
+          realFmt,
+        );
+        if (fmt === 'copy') {
+          const text = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+            reader.onload = () => resolve(String(reader.result ?? ''));
+            reader.readAsText(blob);
+          });
+          await Clipboard.setStringAsync(text);
+          Alert.alert('Copied', 'Report copied to clipboard.');
+          return;
+        }
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+          reader.onload = () => {
+            const r = String(reader.result ?? '');
+            const idx = r.indexOf(',');
+            resolve(idx === -1 ? r : r.slice(idx + 1));
+          };
+          reader.readAsDataURL(blob);
+        });
+        const target = `${FileSystem.cacheDirectory ?? ''}${filename}`;
+        await FileSystem.writeAsStringAsync(target, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(target);
+        } else {
+          Alert.alert('Saved', `Report saved at ${target}`);
+        }
+      } catch (e) {
+        Alert.alert('Download failed', extractErrorMessage(e));
+      } finally {
+        setDownloading(false);
+      }
+    },
+    [businessId, bookId],
+  );
+
   const onPressEntry = useCallback(
     (id: string) =>
       router.push({
@@ -199,6 +257,24 @@ export default function BookDetailScreen() {
                 })
               }
             />
+            <Menu
+              visible={downloadOpen}
+              onDismiss={() => setDownloadOpen(false)}
+              anchor={
+                <Appbar.Action
+                  icon="download"
+                  color={palette.white}
+                  disabled={downloading}
+                  onPress={() => setDownloadOpen(true)}
+                />
+              }
+            >
+              <Menu.Item leadingIcon="file-pdf-box" onPress={() => onDownload('pdf')} title="PDF" />
+              <Menu.Item leadingIcon="microsoft-excel" onPress={() => onDownload('xlsx')} title="Excel" />
+              <Menu.Item leadingIcon="file-delimited" onPress={() => onDownload('csv')} title="CSV" />
+              <Menu.Item leadingIcon="format-text" onPress={() => onDownload('txt')} title="Plain text" />
+              <Menu.Item leadingIcon="content-copy" onPress={() => onDownload('copy')} title="Copy to clipboard" />
+            </Menu>
           </>
         ) : null}
       </Appbar.Header>

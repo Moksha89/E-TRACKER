@@ -238,7 +238,8 @@ def test_export_formats(client: TestClient) -> None:
     assert csv_resp.status_code == 200
     assert "text/csv" in csv_resp.headers["content-type"]
     body = csv_resp.text
-    assert "Date,Type,Amount" in body
+    assert "Date,Time,Type,Amount" in body
+    assert "Entered By" in body
     assert "January sales" in body
     assert "Office rent" in body
 

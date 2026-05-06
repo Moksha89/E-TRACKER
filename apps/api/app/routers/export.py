@@ -34,9 +34,10 @@ from app.models import (
     EntryType,
     Party,
     PaymentMode,
+    User,
 )
 
-ExportFormat = Literal["csv", "xlsx", "pdf"]
+ExportFormat = Literal["csv", "xlsx", "pdf", "txt"]
 
 router = APIRouter(prefix="/v1/businesses/{business_id}", tags=["export"])
 
@@ -56,12 +57,14 @@ def _money(cents: int, currency: str) -> str:
 class ExportRow:
     id: str
     occurred_at: datetime
+    created_at: datetime
     type: str
     amount_cents: int
     description: str
     category: str
     payment_mode: str
     party: str
+    created_by: str
 
 
 def _fetch_rows(
@@ -80,17 +83,21 @@ def _fetch_rows(
         select(
             Entry.id,
             Entry.occurred_at,
+            Entry.created_at,
             Entry.type,
             Entry.amount_cents,
             Entry.description,
             Category.name,
             PaymentMode.name,
             Party.name,
+            User.name,
+            User.phone,
         )
         .select_from(Entry)
         .outerjoin(Category, Category.id == Entry.category_id)
         .outerjoin(PaymentMode, PaymentMode.id == Entry.payment_mode_id)
         .outerjoin(Party, Party.id == Entry.party_id)
+        .outerjoin(User, User.id == Entry.created_by_id)
         .where(*filters)
         .order_by(Entry.occurred_at.asc(), Entry.created_at.asc())
     ).all()
@@ -98,12 +105,14 @@ def _fetch_rows(
         ExportRow(
             id=r[0],
             occurred_at=r[1],
-            type=r[2].value if hasattr(r[2], "value") else str(r[2]),
-            amount_cents=int(r[3]),
-            description=r[4] or "",
-            category=r[5] or "",
-            payment_mode=r[6] or "",
-            party=r[7] or "",
+            created_at=r[2],
+            type=r[3].value if hasattr(r[3], "value") else str(r[3]),
+            amount_cents=int(r[4]),
+            description=r[5] or "",
+            category=r[6] or "",
+            payment_mode=r[7] or "",
+            party=r[8] or "",
+            created_by=(r[9] or r[10] or ""),
         )
         for r in rows
     ]
@@ -115,24 +124,30 @@ def _csv_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
     writer.writerow(
         [
             "Date",
+            "Time",
             "Type",
             "Amount",
             "Description",
             "Category",
             "Payment Mode",
             "Party",
+            "Entered By",
+            "Logged At",
         ]
     )
     for it in items:
         writer.writerow(
             [
-                str(it.occurred_at),
+                it.occurred_at.strftime("%Y-%m-%d"),
+                it.occurred_at.strftime("%H:%M"),
                 it.type,
                 f"{it.amount_cents / 100:.2f}",
                 it.description,
                 it.category,
                 it.payment_mode,
                 it.party,
+                it.created_by,
+                it.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             ]
         )
     buf.seek(0)
@@ -150,7 +165,20 @@ def _xlsx_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
     if ws is None:
         raise HTTPException(status_code=500, detail="failed to create workbook")
     ws.title = book.name[:31] or "Entries"
-    ws.append(["Date", "Type", "Amount", "Description", "Category", "Payment Mode", "Party"])
+    ws.append(
+        [
+            "Date",
+            "Time",
+            "Type",
+            "Amount",
+            "Description",
+            "Category",
+            "Payment Mode",
+            "Party",
+            "Entered By",
+            "Logged At",
+        ]
+    )
     in_total = 0
     out_total = 0
     for it in items:
@@ -161,13 +189,16 @@ def _xlsx_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
             out_total += it.amount_cents
         ws.append(
             [
-                it.occurred_at,
+                it.occurred_at.strftime("%Y-%m-%d"),
+                it.occurred_at.strftime("%H:%M"),
                 it.type,
                 amount,
                 it.description,
                 it.category,
                 it.payment_mode,
                 it.party,
+                it.created_by,
+                it.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             ]
         )
     ws.append([])
@@ -217,25 +248,26 @@ def _pdf_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
     story.append(Spacer(1, 8))
 
     data: list[list[object]] = [
-        ["Date", "Type", "Amount", "Description", "Category", "Mode", "Party"]
+        ["Date / Time", "Type", "Amount", "Description", "Category", "Mode", "Party", "Entered By"]
     ]
     for it in items:
         data.append(
             [
-                str(it.occurred_at),
+                it.occurred_at.strftime("%Y-%m-%d %H:%M"),
                 it.type,
                 _money(it.amount_cents, book.currency),
                 it.description[:40],
                 it.category[:20],
                 it.payment_mode[:20],
                 it.party[:20],
+                it.created_by[:20],
             ]
         )
     table = Table(data, repeatRows=1)
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#16A34A")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#000000")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
@@ -251,6 +283,36 @@ def _pdf_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
     return StreamingResponse(
         buf,
         media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _txt_response(book: Book, items: list[ExportRow]) -> StreamingResponse:
+    in_total = sum(i.amount_cents for i in items if i.type == EntryType.IN.value)
+    out_total = sum(i.amount_cents for i in items if i.type == EntryType.OUT.value)
+    net = book.opening_balance_cents + in_total - out_total
+    lines: list[str] = []
+    lines.append(f"{book.name}")
+    lines.append("=" * len(book.name))
+    lines.append(
+        f"Cash In: {_money(in_total, book.currency)}    "
+        f"Cash Out: {_money(out_total, book.currency)}    "
+        f"Balance: {_money(net, book.currency)}"
+    )
+    lines.append("")
+    for it in items:
+        ts = it.occurred_at.strftime("%Y-%m-%d %H:%M")
+        sign = "+" if it.type == EntryType.IN.value else "-"
+        amt = _money(it.amount_cents, book.currency)
+        meta = " | ".join(x for x in [it.category, it.payment_mode, it.party, it.description] if x)
+        by = f" by {it.created_by}" if it.created_by else ""
+        logged = it.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        lines.append(f"[{ts}] {sign}{amt}  {meta}{by}  (logged {logged})")
+    body = "\n".join(lines) + "\n"
+    filename = f"{book.name.replace(' ', '_')}-entries.txt"
+    return StreamingResponse(
+        iter([body]),
+        media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -273,4 +335,6 @@ def export_entries(
         return _xlsx_response(book, items)
     if fmt == "pdf":
         return _pdf_response(book, items)
+    if fmt == "txt":
+        return _txt_response(book, items)
     raise HTTPException(status_code=400, detail=f"unsupported format: {fmt}")
